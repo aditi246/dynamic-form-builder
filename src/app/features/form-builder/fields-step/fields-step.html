@@ -1,0 +1,276 @@
+<div class="flex flex-col h-[calc(100vh-12rem)]">
+  <div class="flex gap-6 flex-1">
+    <!-- Form Fields Table - 60% -->
+    <div class="w-[60%] bg-card rounded-md shadow-sm p-6 flex flex-col">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-semibold text-text">Form Fields</h2>
+      <button 
+        (click)="addField()"
+        class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium">
+        + Add Field
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-border bg-bg">
+            @for (column of ['Label', 'Name', 'Type', 'Required', 'Default Value', 'Actions']; track column) {
+              <th class="text-left py-3 px-4 text-sm font-medium text-text">{{ column }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @if (fields().length === 0) {
+            <!-- Template Row -->
+            <tr class="border-b border-border hover:bg-bg">
+              <td class="py-3 px-4 text-sm text-text">First Name</td>
+              <td class="py-3 px-4 text-sm text-muted">firstName</td>
+              <td class="py-3 px-4 text-sm text-text">Text</td>
+              <td class="py-3 px-4">
+                <app-icon name="check" class="w-5 h-5 text-success"></app-icon>
+              </td>
+              <td class="py-3 px-4 text-sm text-muted">-</td>
+              <td class="py-3 px-4">
+                <div class="flex items-center gap-3">
+                  <button 
+                    class="text-muted hover:text-primary transition-colors">
+                    <app-icon name="edit" class="w-5 h-5"></app-icon>
+                  </button>
+                  <button 
+                    class="text-muted hover:text-danger transition-colors">
+                    <app-icon name="delete" class="w-5 h-5"></app-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+          @for (field of fields(); track field.name; let i = $index) {
+            <tr class="border-b border-border hover:bg-bg">
+              <td class="py-3 px-4 text-sm text-text">{{ field.label }}</td>
+              <td class="py-3 px-4 text-sm text-muted">{{ field.name }}</td>
+              <td class="py-3 px-4 text-sm text-text capitalize">{{ field.type }}</td>
+              <td class="py-3 px-4">
+                @if (field.required) {
+                  <app-icon name="check" class="w-5 h-5 text-success"></app-icon>
+                }
+              </td>
+              <td class="py-3 px-4 text-sm text-muted">
+                @if (field.default !== null && field.default !== undefined && field.default !== '') {
+                  @if (field.type === 'checkbox') {
+                    {{ field.default ? 'True' : 'False' }}
+                  } @else if (field.type === 'number') {
+                    {{ field.default }}
+                  } @else {
+                    {{ field.default }}
+                  }
+                } @else {
+                  <span class="text-muted">-</span>
+                }
+              </td>
+              <td class="py-3 px-4">
+                <div class="flex items-center gap-3">
+                  <button 
+                    (click)="editField(field, i)"
+                    class="text-muted hover:text-primary transition-colors">
+                    <app-icon name="edit" class="w-5 h-5"></app-icon>
+                  </button>
+                  <button 
+                    (click)="deleteField(i)"
+                    class="text-muted hover:text-danger transition-colors">
+                    <app-icon name="delete" class="w-5 h-5"></app-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    </div>
+
+    <!-- Field Editor - 40% -->
+    <div class="w-[40%] bg-card rounded-md shadow-sm p-6 flex flex-col">
+    <h2 class="text-lg font-semibold text-text mb-6">Field Editor</h2>
+
+    <form [formGroup]="fieldForm" class="flex-1 flex flex-col overflow-y-auto">
+      <div class="space-y-4 flex-1">
+        <div>
+          <label class="block text-sm font-medium text-text mb-2">Label</label>
+          <input 
+            type="text"
+            formControlName="label"
+            placeholder="e.g. First Name"
+            class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-text mb-2">Name (unique key)</label>
+          <input 
+            type="text"
+            formControlName="name"
+            placeholder="e.g. firstName"
+            class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-text mb-2">Type</label>
+          <select 
+            formControlName="type"
+            class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
+            @for (type of fieldTypes; track type) {
+              <option [value]="type">{{ type }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-text mb-2">Default Value</label>
+          <app-defaults 
+            [type]="currentType()"
+            [options]="getOptionsArray()"
+            [control]="defaultControl">
+          </app-defaults>
+        </div>
+
+        @if (isSelectType()) {
+          <div>
+            <label class="block text-sm font-medium text-text mb-2">Options (for Select type)</label>
+            <textarea 
+              formControlName="options"
+              (keydown)="addOption($event)"
+              placeholder="add option and press enter after adding every option"
+              rows="4"
+              class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"></textarea>
+          </div>
+        }
+
+        <!-- Validation Section -->
+        <div class="border-t border-border pt-4">
+          <h3 class="text-sm font-semibold text-text mb-4">Validation</h3>
+          
+          <div class="space-y-4">
+            <div class="flex items-center">
+              <input 
+                type="checkbox"
+                formControlName="required"
+                id="required"
+                class="w-4 h-4 text-primary border-border rounded">
+              <label for="required" class="ml-2 text-sm text-text">Required</label>
+            </div>
+
+            @if (isTextType() || isNumberType() || isFileType()) {
+              <div class="flex gap-4">
+                <div class="flex-1">
+                  <label class="block text-sm font-medium text-text mb-2" [class.text-muted]="isTextType() && hasRegexPattern()">
+                    @if (isTextType()) {
+                      Min Length
+                    } @else if (isNumberType()) {
+                      Min Value
+                    } @else if (isFileType()) {
+                      Min Item
+                    }
+                  </label>
+                  <input 
+                    type="number"
+                    formControlName="min"
+                    class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-bg">
+                </div>
+
+                <div class="flex-1">
+                  <label class="block text-sm font-medium text-text mb-2" [class.text-muted]="isTextType() && hasRegexPattern()">
+                    @if (isTextType()) {
+                      Max Length
+                    } @else if (isNumberType()) {
+                      Max Value
+                    } @else if (isFileType()) {
+                      Max Item
+                    }
+                  </label>
+                  <input 
+                    type="number"
+                    formControlName="max"
+                    class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-bg">
+                </div>
+              </div>
+
+              @if(isNumberType()) {
+                <div>
+                  <label class="block text-sm font-medium text-text mb-2">Step</label>
+                  <input 
+                    type="number"
+                    formControlName="step"
+                    class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
+                </div>
+              }
+            }
+
+            @if (isTextType()) {
+              <div>
+                <label class="block text-sm font-medium text-text mb-2">Pattern (RegEx)</label>
+                <div class="space-y-2">
+                  <select 
+                    formControlName="regexType"
+                    class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card mb-2">
+                    <option value="predefined">Choose from predefined</option>
+                    <option value="custom">Custom regex</option>
+                  </select>
+                  
+                  @if (fieldForm.value.regexType === 'predefined') {
+                    <select 
+                      formControlName="pattern"
+                      class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
+                      <option value="">Select pattern</option>
+                      @for (regex of predefinedRegex; track regex.value) {
+                        <option [value]="regex.value">{{ regex.label }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <input 
+                      type="text"
+                      formControlName="pattern"
+                      placeholder="Enter custom regex pattern"
+                      class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-6 pt-6 border-t border-border">
+        <button 
+          type="button"
+          (click)="resetForm()"
+          class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium">
+          Cancel
+        </button>
+        <button 
+          type="button"
+          (click)="addField()"
+          class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium">
+          Save
+        </button>
+      </div>
+    </form>
+    </div>
+  </div>
+
+  <!-- Navigation Buttons at Bottom -->
+  <div class="flex justify-between mt-6">
+    <button 
+      type="button"
+      (click)="backStep.emit()"
+      class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium">
+      Back
+    </button>
+    <button 
+      type="button"
+      (click)="nextStep.emit()"
+      class="px-6 py-2 bg-success text-white rounded-md hover:opacity-90 font-medium">
+      Next
+    </button>
+  </div>
+</div>
+

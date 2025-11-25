@@ -1,0 +1,51 @@
+<div class="min-h-screen bg-bg">
+  <header class="bg-primary text-white">
+    <div class="px-6 py-4">
+      <h1 class="text-xl font-semibold">Dynamic Form Generator</h1>
+    </div>
+  </header>
+
+  <!-- Tabs Navigation -->
+  <nav class="bg-card border-b border-border">
+    <div class="px-6 flex gap-8">
+      <button 
+        (click)="currentStep.set('fields')"
+        class="py-4 px-2 border-b-2 font-medium transition-colors"
+        [class.border-primary]="currentStep() === 'fields'"
+        [class.text-primary]="currentStep() === 'fields'"
+        [class.border-transparent]="currentStep() !== 'fields'"
+        [class.text-muted]="currentStep() !== 'fields'">
+        Builder
+      </button>
+      <button 
+        (click)="currentStep.set('rules')"
+        class="py-4 px-2 border-b-2 font-medium transition-colors"
+        [class.border-primary]="currentStep() === 'rules'"
+        [class.text-primary]="currentStep() === 'rules'"
+        [class.border-transparent]="currentStep() !== 'rules'"
+        [class.text-muted]="currentStep() !== 'rules'">
+        Rules
+      </button>
+      <button 
+        (click)="currentStep.set('preview')"
+        class="py-4 px-2 border-b-2 font-medium transition-colors"
+        [class.border-primary]="currentStep() === 'preview'"
+        [class.text-primary]="currentStep() === 'preview'"
+        [class.border-transparent]="currentStep() !== 'preview'"
+        [class.text-muted]="currentStep() !== 'preview'">
+        Preview
+      </button>
+    </div>
+  </nav>
+
+  <main class="p-6">
+    @if (currentStep() === 'fields') {
+      <app-fields-step (nextStep)="onNextStep()" (backStep)="onBackStep()"></app-fields-step>
+    } @else if (currentStep() === 'rules') {
+      <app-rules-step (nextStep)="onNextStep()" (backStep)="onBackStep()"></app-rules-step>
+    } @else if (currentStep() === 'preview') {
+      <app-preview-step (nextStep)="onNextStep()" (backStep)="onBackStep()"></app-preview-step>
+    }
+  </main>
+</div>
+

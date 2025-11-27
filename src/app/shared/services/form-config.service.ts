@@ -1,26 +1,44 @@
 import { Injectable, signal } from '@angular/core';
 import { FormField } from '../../features/form-builder/fields-step/fields-step';
 
-export interface ConditionalRule {
-  id: string;
-  type: 'conditional';
-  triggerField: string;
-  operator: string;
-  triggerValue: string;
-  action: 'show' | 'hide' | 'require' | 'optional';
-  targetField: string;
+export type ConditionOperator =
+  | 'equals'
+  | 'notEquals'
+  | 'contains'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'isTrue'
+  | 'isFalse';
+
+export interface RuleCondition {
+  field: string;
+  operator: ConditionOperator;
+  value?: string;
+  values?: string[];
 }
 
-export interface DateComparisonRule {
-  id: string;
-  type: 'date-comparison';
-  leftField: string;
-  comparator: '<=' | '>=' | '<' | '>' | '==';
-  rightField: string;
-  errorMessage: string;
-}
+export type RuleAction =
+  | { type: 'hide-field'; targetField: string }
+  | { type: 'show-field'; targetField: string }
+  | {
+      type: 'enforce-comparison';
+      targetField: string;
+      comparator: '<' | '<=' | '>' | '>=' | '==' | '!=';
+      valueSource: 'static' | 'field';
+      value?: number;
+      otherField?: string;
+      errorMessage?: string;
+    };
 
-export type Rule = ConditionalRule | DateComparisonRule;
+export interface CustomRule {
+  id: string;
+  name: string;
+  description?: string;
+  conditions: RuleCondition[];
+  action: RuleAction;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -28,19 +46,19 @@ export type Rule = ConditionalRule | DateComparisonRule;
 export class FormConfigService {
   private readonly STORAGE_KEY = 'form-builder-rules';
   
-  rules = signal<Rule[]>([]);
+  rules = signal<CustomRule[]>([]);
   fields = signal<FormField[]>([]);
 
   constructor() {
     this.loadRules();
   }
 
-  addRule(rule: Rule): void {
+  addRule(rule: CustomRule): void {
     this.rules.update(rules => [...rules, rule]);
     this.saveRules();
   }
 
-  updateRule(id: string, rule: Rule): void {
+  updateRule(id: string, rule: CustomRule): void {
     this.rules.update(rules => 
       rules.map(r => r.id === id ? rule : r)
     );
@@ -49,6 +67,11 @@ export class FormConfigService {
 
   deleteRule(id: string): void {
     this.rules.update(rules => rules.filter(r => r.id !== id));
+    this.saveRules();
+  }
+
+  clearRules(): void {
+    this.rules.set([]);
     this.saveRules();
   }
 
@@ -71,7 +94,11 @@ export class FormConfigService {
       try {
         const stored = localStorage.getItem(this.STORAGE_KEY);
         if (stored) {
-          this.rules.set(JSON.parse(stored));
+          const parsed = JSON.parse(stored);
+          const safeRules = Array.isArray(parsed)
+            ? parsed.filter((rule: any) => rule && rule.action && rule.conditions !== undefined)
+            : [];
+          this.rules.set(safeRules);
         }
       } catch (error) {
         console.error('Error loading rules:', error);
@@ -79,4 +106,3 @@ export class FormConfigService {
     }
   }
 }
-

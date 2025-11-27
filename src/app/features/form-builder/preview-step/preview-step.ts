@@ -5,6 +5,8 @@ import { FormField } from '../fields-step/fields-step';
 import { StorageService } from '../../../shared/services/storage.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { AudioTextareaComponent } from '../../../components/audio-textarea/audio-textarea';
+import { FormConfigService } from '../../../shared/services/form-config.service';
+import { RulesEngineService } from '../../../shared/services/rules-engine.service';
 
 @Component({
   selector: 'app-preview-step',
@@ -18,9 +20,14 @@ export class PreviewStep implements OnInit {
 
   fields = signal<FormField[]>([]);
   previewForm = new FormGroup({});
+  hiddenFields = signal<Set<string>>(new Set());
   private readonly STORAGE_KEY = 'form-builder-fields';
 
-  constructor(private storageService: StorageService) {}
+  constructor(
+    private storageService: StorageService,
+    private formConfigService: FormConfigService,
+    private rulesEngineService: RulesEngineService
+  ) {}
 
   ngOnInit() {
     this.loadFields();
@@ -30,7 +37,10 @@ export class PreviewStep implements OnInit {
     const fieldsData = this.storageService.getItem<Omit<FormField, 'formValue'>[]>(this.STORAGE_KEY);
     if (fieldsData) {
       this.fields.set(fieldsData as FormField[]);
+      this.formConfigService.setFields(this.fields());
       this.buildForm();
+      this.applyRules();
+      this.previewForm.valueChanges.subscribe(() => this.applyRules());
     }
   }
 
@@ -89,8 +99,46 @@ export class PreviewStep implements OnInit {
     this.previewForm = new FormGroup(group);
   }
 
+  private applyRules() {
+    const evaluation = this.rulesEngineService.evaluate(
+      this.formConfigService.rules(),
+      this.previewForm.getRawValue(),
+      this.fields()
+    );
+
+    this.hiddenFields.set(evaluation.hiddenFields);
+
+    this.fields().forEach(field => {
+      const control = this.getFieldControl(field.name);
+      if (!control) return;
+
+      const isHidden = evaluation.hiddenFields.has(field.name);
+      if (isHidden) {
+        if (control.enabled) {
+          control.disable({ emitEvent: false });
+        }
+      } else if (control.disabled) {
+        control.enable({ emitEvent: false });
+      }
+
+      const existingErrors = control.errors || {};
+      if (evaluation.fieldErrors[field.name]) {
+        control.setErrors({ ...existingErrors, rule: evaluation.fieldErrors[field.name] });
+      } else {
+        if (existingErrors['rule']) {
+          delete existingErrors['rule'];
+        }
+        control.setErrors(Object.keys(existingErrors).length ? existingErrors : null);
+      }
+    });
+  }
+
   getFieldControl(fieldName: string): FormControl | null {
     return this.previewForm.get(fieldName) as FormControl;
+  }
+
+  isHidden(fieldName: string): boolean {
+    return this.hiddenFields().has(fieldName);
   }
 
   isFieldInvalid(fieldName: string): boolean {
@@ -120,6 +168,9 @@ export class PreviewStep implements OnInit {
     if (control.errors['pattern']) {
       return 'Invalid format.';
     }
+    if (control.errors['rule']) {
+      return control.errors['rule'];
+    }
     
     return '';
   }
@@ -130,4 +181,3 @@ export class PreviewStep implements OnInit {
     console.log('AI command changed:', text);
   }
 }
-

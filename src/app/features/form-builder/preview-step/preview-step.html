@@ -21,11 +21,11 @@
             }
           </label>
           
-          @if (field.type === 'text' || field.type === 'email' || field.type === 'date') {
+          @if (field.type === 'text' || field.type === 'email') {
             <input 
               [type]="field.type"
               [formControlName]="field.name"
-              [placeholder]="'e.g. ' + (field.type === 'email' ? 'john.doe@example.com' : field.type === 'date' ? 'mm/dd/yyyy' : field.label.toLowerCase())"
+              [placeholder]="'e.g. ' + (field.type === 'email' ? 'john.doe@example.com' : field.label.toLowerCase())"
               [class.border-danger]="isFieldInvalid(field.name)"
               [class.border-border]="!isFieldInvalid(field.name)"
               class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
@@ -78,19 +78,6 @@
                 class="w-4 h-4 text-primary border-border rounded">
               <span [innerHTML]="field.label"></span>
             </label>
-            @if (isFieldInvalid(field.name)) {
-              <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
-            }
-          }
-          
-          @else if (field.type === 'file') {
-            <input 
-              type="file"
-              [formControlName]="field.name"
-              [multiple]="false"
-              [class.border-danger]="isFieldInvalid(field.name)"
-              [class.border-border]="!isFieldInvalid(field.name)"
-              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
             @if (isFieldInvalid(field.name)) {
               <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
             }

@@ -51,7 +51,7 @@ export class FieldsStep {
     regexType: new FormControl<'predefined' | 'custom'>('predefined'),
   });
 
-  fieldTypes = ['text', 'number', 'checkbox', 'select', 'date', 'file'];
+  fieldTypes = ['text', 'number', 'checkbox', 'select'];
 
   predefinedRegex = [
     { label: 'Email', value: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$' },
@@ -159,7 +159,6 @@ export class FieldsStep {
   isTextType = computed(() => this.currentType() === 'text');
   isNumberType = computed(() => this.currentType() === 'number');
   isCheckboxType = computed(() => this.currentType() === 'checkbox');
-  isFileType = computed(() => this.currentType() === 'file');
 
   hasRegexPattern = signal<boolean>(false);
 

@@ -182,7 +182,7 @@
                 >
               </div>
 
-              @if (isTextType() || isNumberType() || isFileType()) {
+              @if (isTextType() || isNumberType()) {
               <div class="flex gap-4">
                 <div class="flex-1">
                   <label
@@ -190,7 +190,7 @@
                     [class.text-muted]="isTextType() && hasRegexPattern()"
                   >
                     @if (isTextType()) { Min Length } @else if (isNumberType())
-                    { Min Value } @else if (isFileType()) { Min Item }
+                    { Min Value }
                   </label>
                   <input
                     type="number"
@@ -205,7 +205,7 @@
                     [class.text-muted]="isTextType() && hasRegexPattern()"
                   >
                     @if (isTextType()) { Max Length } @else if (isNumberType())
-                    { Max Value } @else if (isFileType()) { Max Item }
+                    { Max Value }
                   </label>
                   <input
                     type="number"

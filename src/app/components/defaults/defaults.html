@@ -42,31 +42,3 @@
   </div>
 }
 
-@else if (isFileType()) {
-  <div class="space-y-3">
-    <div class="flex flex-wrap gap-2">
-      @for (fileType of fileTypes(); track fileType) {
-        <button
-          type="button"
-          (click)="onFileTypeToggle(fileType)"
-          [class.bg-primary]="selectedFileTypes().includes(fileType)"
-          [class.text-white]="selectedFileTypes().includes(fileType)"
-          [class.border-border]="!selectedFileTypes().includes(fileType)"
-          [class.text-text]="!selectedFileTypes().includes(fileType)"
-          class="px-3 py-1 border rounded-md text-sm font-medium hover:opacity-90 transition-colors">
-          {{ fileType }}
-        </button>
-      }
-    </div>
-    @if (selectedFileTypes().length > 0) {
-      <p class="text-sm text-muted">
-        Selected: {{ selectedFileTypes().join(', ') }}
-      </p>
-    } @else {
-      <p class="text-sm text-muted">
-        No file types selected
-      </p>
-    }
-  </div>
-}
-

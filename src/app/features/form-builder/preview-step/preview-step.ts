@@ -80,10 +80,6 @@ export class PreviewStep implements OnInit {
           defaultValue = false;
         } else if (field.type === 'number') {
           defaultValue = null;
-        } else if (field.type === 'date') {
-          defaultValue = null;
-        } else if (field.type === 'file') {
-          defaultValue = null;
         }
       }
       

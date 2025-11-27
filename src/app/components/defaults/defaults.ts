@@ -13,9 +13,6 @@ export class DefaultsComponent {
   options = input<string[]>([]);
   control = input<FormControl | null>(null);
   
-  fileTypes = signal<string[]>(['.png', '.jpg', '.jpeg', '.pdf', '.doc', '.docx', '.xls', '.xlsx']);
-  selectedFileTypes = signal<string[]>([]);
-  
   checkboxValue = signal<boolean | null>(null);
 
   constructor() {
@@ -27,14 +24,6 @@ export class DefaultsComponent {
       if (ctrl && fieldType === 'checkbox') {
         const value = ctrl.value;
         this.checkboxValue.set(value === true || value === 'true' || value === 1);
-      }
-      
-      // Initialize file types from control value
-      if (ctrl && fieldType === 'file' && ctrl.value) {
-        const value = String(ctrl.value);
-        if (value) {
-          this.selectedFileTypes.set(value.split(',').filter(t => t.trim()));
-        }
       }
     });
   }
@@ -48,13 +37,9 @@ export class DefaultsComponent {
     return this.type() === 'checkbox';
   }
 
-  isFileType(): boolean {
-    return this.type() === 'file';
-  }
-
   isTextType(): boolean {
     const t = this.type();
-    return t === 'text' || t === 'email' || t === 'date';
+    return t === 'text' || t === 'email';
   }
 
   isNumberType(): boolean {
@@ -70,21 +55,6 @@ export class DefaultsComponent {
     const ctrl = this.control();
     if (ctrl) {
       ctrl.setValue(value);
-    }
-  }
-
-  onFileTypeToggle(fileType: string) {
-    this.selectedFileTypes.update(types => {
-      if (types.includes(fileType)) {
-        return types.filter(t => t !== fileType);
-      } else {
-        return [...types, fileType];
-      }
-    });
-    
-    const ctrl = this.control();
-    if (ctrl) {
-      ctrl.setValue(this.selectedFileTypes().join(','));
     }
   }
 

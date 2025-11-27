@@ -9,18 +9,6 @@
     "test": "ng test",
     "serve:ssr:dynamic-form-generator": "node dist/dynamic-form-generator/server/server.mjs"
   },
-  "prettier": {
-    "printWidth": 100,
-    "singleQuote": true,
-    "overrides": [
-      {
-        "files": "*.html",
-        "options": {
-          "parser": "angular"
-        }
-      }
-    ]
-  },
   "private": true,
   "dependencies": {
     "@angular/common": "^20.3.0",
@@ -33,6 +21,7 @@
     "@angular/ssr": "^20.3.7",
     "@tailwindcss/postcss": "^4.1.17",
     "express": "^5.1.0",
+    "prettier": "^3.6.2",
     "rxjs": "~7.8.0",
     "tailwindcss": "^4.1.17",
     "tslib": "^2.3.0"

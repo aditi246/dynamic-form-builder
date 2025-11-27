@@ -86,6 +86,7 @@ export class RulesStep implements OnInit {
     private formsService: FormsManagementService
   ) {
     effect(() => {
+      this.formsService.forms(); // react when fields list updates
       const formId = this.formsService.getCurrentFormId();
       const formName = this.formsService.getCurrentFormName();
       if (formId || formName) {

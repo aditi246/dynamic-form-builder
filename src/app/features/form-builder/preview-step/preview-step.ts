@@ -2,7 +2,7 @@ import { Component, output, OnInit, signal, effect } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { FormField } from '../fields-step/fields-step';
-import { StorageService } from '../../../shared/services/storage.service';
+import { Subscription } from 'rxjs';
 import { FormsManagementService } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { AudioTextareaComponent } from '../../../components/audio-textarea/audio-textarea';
@@ -22,42 +22,49 @@ export class PreviewStep implements OnInit {
   fields = signal<FormField[]>([]);
   previewForm = new FormGroup({});
   hiddenFields = signal<Set<string>>(new Set());
-  
-  private get STORAGE_KEY(): string {
-    const formId = this.formsService.getCurrentFormId();
-    return formId ? `form-builder-fields-${formId}` : 'form-builder-fields';
-  }
+
+  private valueChangesSub?: Subscription;
 
   constructor(
-    private storageService: StorageService,
     private formConfigService: FormConfigService,
     private rulesEngineService: RulesEngineService,
     private formsService: FormsManagementService
   ) {
     effect(() => {
+      this.formsService.forms(); // react to field updates
       const formId = this.formsService.getCurrentFormId();
-      if (formId) {
-        this.loadFields();
+      const formName = this.formsService.getCurrentFormName();
+      if (formId || formName) {
+        this.loadFields(formId, formName);
       } else {
-        this.fields.set([]);
-        this.previewForm = new FormGroup({});
+        this.resetPreview();
       }
     });
   }
 
   ngOnInit() {
-    this.loadFields();
+    this.loadFields(this.formsService.getCurrentFormId(), this.formsService.getCurrentFormName());
   }
 
-  private loadFields() {
-    const fieldsData = this.storageService.getItem<Omit<FormField, 'formValue'>[]>(this.STORAGE_KEY);
-    if (fieldsData) {
+  private loadFields(formId?: string | null, formName?: string | null) {
+    const fieldsData = this.formsService.getFormFields(formId, formName);
+    if (fieldsData && fieldsData.length > 0) {
       this.fields.set(fieldsData as FormField[]);
       this.formConfigService.setFields(this.fields());
       this.buildForm();
       this.applyRules();
-      this.previewForm.valueChanges.subscribe(() => this.applyRules());
+      this.valueChangesSub?.unsubscribe();
+      this.valueChangesSub = this.previewForm.valueChanges.subscribe(() => this.applyRules());
+    } else {
+      this.resetPreview();
     }
+  }
+
+  private resetPreview() {
+    this.fields.set([]);
+    this.previewForm = new FormGroup({});
+    this.hiddenFields.set(new Set());
+    this.valueChangesSub?.unsubscribe();
   }
 
   private buildForm() {

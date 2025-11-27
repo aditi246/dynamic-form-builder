@@ -283,6 +283,12 @@ export class FieldsStep {
   }
 
   addField() {
+    const hasFormTarget = this.formsService.getCurrentFormId() || this.formName()?.trim();
+    if (!hasFormTarget) {
+      alert('Please select or create a form before adding fields.');
+      return;
+    }
+
     if (this.fieldForm.valid) {
       const value = this.fieldForm.value;
       // Parse options from double-quoted format
@@ -316,11 +322,21 @@ export class FieldsStep {
         },
       };
 
+      const editingIdx = this.editingIndex();
+      const normalizedName = fieldData.name.trim().toLowerCase();
+      const duplicate = this.fields().some(
+        (f, i) => i !== editingIdx && f.name.trim().toLowerCase() === normalizedName
+      );
+      if (duplicate) {
+        this.fieldForm.get('name')?.setErrors({ duplicate: true });
+        alert('Field name must be unique within a form.');
+        return;
+      }
+
       // Create FormControl with validators
       const formControl = this.createFormControl(fieldData);
       const field: FormField = { ...fieldData, formValue: formControl };
 
-      const editingIdx = this.editingIndex();
       if (editingIdx !== null) {
         // Update existing field with a fresh FormControl
         this.fields.update((fields) => fields.map((f, i) => (i === editingIdx ? field : f)));
@@ -389,20 +405,9 @@ export class FieldsStep {
     let formName = this.formName()?.trim() || null;
     
     if (!formId && !formName) {
-      this.formsService.loadForms();
-      const forms = this.formsService.forms();
-      
-      if (forms.length > 0) {
-        const sortedForms = [...forms].sort((a, b) => 
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        );
-        formId = sortedForms[0].id;
-        formName = sortedForms[0].name;
-        this.formsService.setCurrentForm(formId);
-      } else {
-        console.warn('No forms available in the list');
-        return;
-      }
+      console.warn('No form selected; fields not saved.');
+      alert('Please select or create a form before saving fields.');
+      return;
     }
     
     const saved = this.formsService.saveFormFields(formId, fieldsToSave, formName);

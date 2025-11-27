@@ -22,12 +22,16 @@ export class BuilderShell {
       if (!currentForm) {
         this.formEngaged.set(false);
         this.currentStep.set('forms');
+      } else if (!this.formEngaged()) {
+        // Re-engage tabs when a persisted form selection exists (e.g., after reload)
+        this.formEngaged.set(true);
       }
     });
   }
 
   goToStep(step: 'forms' | 'fields' | 'rules' | 'preview') {
     if (step === 'forms') {
+      this.formsService.setCurrentForm(null);
       this.formEngaged.set(false);
       this.currentStep.set('forms');
       return;
@@ -60,6 +64,7 @@ export class BuilderShell {
     } else if (this.currentStep() === 'rules') {
       this.currentStep.set('fields');
     } else if (this.currentStep() === 'fields') {
+      this.formsService.setCurrentForm(null);
       this.formEngaged.set(false);
       this.currentStep.set('forms');
     }

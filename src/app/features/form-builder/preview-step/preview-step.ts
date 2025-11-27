@@ -1,8 +1,9 @@
-import { Component, output, OnInit, signal } from '@angular/core';
+import { Component, output, OnInit, signal, effect } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { FormField } from '../fields-step/fields-step';
 import { StorageService } from '../../../shared/services/storage.service';
+import { FormsManagementService } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { AudioTextareaComponent } from '../../../components/audio-textarea/audio-textarea';
 import { FormConfigService } from '../../../shared/services/form-config.service';
@@ -21,13 +22,28 @@ export class PreviewStep implements OnInit {
   fields = signal<FormField[]>([]);
   previewForm = new FormGroup({});
   hiddenFields = signal<Set<string>>(new Set());
-  private readonly STORAGE_KEY = 'form-builder-fields';
+  
+  private get STORAGE_KEY(): string {
+    const formId = this.formsService.getCurrentFormId();
+    return formId ? `form-builder-fields-${formId}` : 'form-builder-fields';
+  }
 
   constructor(
     private storageService: StorageService,
     private formConfigService: FormConfigService,
-    private rulesEngineService: RulesEngineService
-  ) {}
+    private rulesEngineService: RulesEngineService,
+    private formsService: FormsManagementService
+  ) {
+    effect(() => {
+      const formId = this.formsService.getCurrentFormId();
+      if (formId) {
+        this.loadFields();
+      } else {
+        this.fields.set([]);
+        this.previewForm = new FormGroup({});
+      }
+    });
+  }
 
   ngOnInit() {
     this.loadFields();

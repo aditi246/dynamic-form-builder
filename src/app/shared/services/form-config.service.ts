@@ -1,5 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, effect } from '@angular/core';
 import { FormField } from '../../features/form-builder/fields-step/fields-step';
+import { FormsManagementService } from './forms-management.service';
+import { StorageService } from './storage.service';
 
 export type ConditionOperator =
   | 'equals'
@@ -44,18 +46,33 @@ export interface CustomRule {
   providedIn: 'root'
 })
 export class FormConfigService {
-  private readonly STORAGE_KEY = 'form-builder-rules';
+  private get STORAGE_KEY(): string {
+    const formId = this.formsService.getCurrentFormId();
+    return formId ? `form-builder-rules-${formId}` : 'form-builder-rules';
+  }
   
   rules = signal<CustomRule[]>([]);
   fields = signal<FormField[]>([]);
 
-  constructor() {
+  constructor(
+    private formsService: FormsManagementService,
+    private storageService: StorageService
+  ) {
+    effect(() => {
+      const formId = this.formsService.getCurrentFormId();
+      if (formId) {
+        this.loadRules();
+      } else {
+        this.rules.set([]);
+      }
+    });
     this.loadRules();
   }
 
   addRule(rule: CustomRule): void {
     this.rules.update(rules => [...rules, rule]);
     this.saveRules();
+    this.updateFormRuleCount();
   }
 
   updateRule(id: string, rule: CustomRule): void {
@@ -68,6 +85,7 @@ export class FormConfigService {
   deleteRule(id: string): void {
     this.rules.update(rules => rules.filter(r => r.id !== id));
     this.saveRules();
+    this.updateFormRuleCount();
   }
 
   clearRules(): void {
@@ -80,29 +98,27 @@ export class FormConfigService {
   }
 
   private saveRules(): void {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.rules()));
-      } catch (error) {
-        console.error('Error saving rules:', error);
-      }
-    }
+    this.storageService.setItem(this.STORAGE_KEY, this.rules());
   }
 
   private loadRules(): void {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        const stored = localStorage.getItem(this.STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          const safeRules = Array.isArray(parsed)
-            ? parsed.filter((rule: any) => rule && rule.action && rule.conditions !== undefined)
-            : [];
-          this.rules.set(safeRules);
-        }
-      } catch (error) {
-        console.error('Error loading rules:', error);
-      }
+    const stored = this.storageService.getItem<CustomRule[]>(this.STORAGE_KEY);
+    if (stored) {
+      const safeRules = Array.isArray(stored)
+        ? stored.filter((rule: any) => rule && rule.action && rule.conditions !== undefined)
+        : [];
+      this.rules.set(safeRules);
+    } else {
+      this.rules.set([]);
+    }
+  }
+
+  private updateFormRuleCount(): void {
+    const formId = this.formsService.getCurrentFormId();
+    if (formId) {
+      this.formsService.updateForm(formId, {
+        ruleCount: this.rules().length
+      });
     }
   }
 }

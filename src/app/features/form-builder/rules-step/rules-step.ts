@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, output } from '@angular/core';
+import { Component, OnInit, signal, computed, output, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
@@ -8,7 +8,7 @@ import {
   ConditionOperator,
   RuleAction
 } from '../../../shared/services/form-config.service';
-import { StorageService } from '../../../shared/services/storage.service';
+import { FormsManagementService } from '../../../shared/services/forms-management.service';
 import { FormField } from '../fields-step/fields-step';
 import { IconComponent } from '../../../components/icon/icon';
 
@@ -83,8 +83,19 @@ export class RulesStep implements OnInit {
 
   constructor(
     private formConfigService: FormConfigService,
-    private storageService: StorageService
-  ) {}
+    private formsService: FormsManagementService
+  ) {
+    effect(() => {
+      const formId = this.formsService.getCurrentFormId();
+      const formName = this.formsService.getCurrentFormName();
+      if (formId || formName) {
+        this.loadFields();
+        this.formConfigService.setFields(this.fields());
+      } else {
+        this.fields.set([]);
+      }
+    });
+  }
 
   ngOnInit() {
     this.loadFields();
@@ -92,10 +103,11 @@ export class RulesStep implements OnInit {
   }
 
   private loadFields() {
-    const fieldsData = this.storageService.getItem<Omit<FormField, 'formValue'>[]>('form-builder-fields');
-    if (fieldsData) {
-      this.fields.set(fieldsData as FormField[]);
-    }
+    const fieldsData = this.formsService.getFormFields(
+      this.formsService.getCurrentFormId(),
+      this.formsService.getCurrentFormName()
+    );
+    this.fields.set((fieldsData as FormField[]) || []);
   }
 
   addCondition() {

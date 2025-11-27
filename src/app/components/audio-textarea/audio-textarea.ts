@@ -12,7 +12,7 @@ import { IconComponent } from '../icon/icon';
 export class AudioTextareaComponent implements OnInit, OnDestroy {
   textChange = output<string>();
 
-  textValue: string = '';
+  textValue = signal<string>('');
   finalText: string = '';
   isRecording = signal<boolean>(false);
   isProcessing = signal<boolean>(false);
@@ -50,8 +50,7 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
           }
 
           // Update text value: final text + current interim
-          this.textValue = this.finalText + interimTranscript;
-          this.textChange.emit(this.textValue);
+          this.textValue.set(this.finalText + interimTranscript);
         };
 
         this.recognition.onerror = (event: any) => {
@@ -63,7 +62,7 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
         this.recognition.onend = () => {
           this.isRecording.set(false);
           this.isProcessing.set(false);
-          this.textChange.emit(this.textValue);
+          this.textValue.set(this.finalText);
         };
       }
     }
@@ -85,7 +84,7 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
       this.isRecording.set(true);
       this.isProcessing.set(true);
       // Reset final text when starting new recording
-      this.textValue = '';
+      this.textValue.set('');
       this.finalText = '';
       this.recognition.start();
     } catch (error) {
@@ -105,17 +104,12 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
   }
 
   onTextChange(value: string) {
-    this.textValue = value;
-    this.textChange.emit(value);
+    this.textValue.set(value);
+    this.finalText = value;
   }
 
   fillWithAI() {
-    // Placeholder for AI functionality
-    this.isProcessing.set(true);
-    // Simulate AI processing
-    setTimeout(() => {
-      this.isProcessing.set(false);
-    }, 2000);
+    this.textChange.emit(this.textValue());
   }
 }
 

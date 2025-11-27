@@ -1,6 +1,6 @@
 <div class="space-y-4">
   <textarea 
-    [(ngModel)]="textValue"
+    [ngModel]="textValue()"
     (ngModelChange)="onTextChange($event)"
     [placeholder]="placeholder"
     [rows]="rows"

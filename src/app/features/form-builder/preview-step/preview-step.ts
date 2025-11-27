@@ -7,6 +7,7 @@ import { IconComponent } from '../../../components/icon/icon';
 import { AudioTextareaComponent } from '../../../components/audio-textarea/audio-textarea';
 import { FormConfigService } from '../../../shared/services/form-config.service';
 import { RulesEngineService } from '../../../shared/services/rules-engine.service';
+// import { AiService } from '../../../shared/services/ai.service';
 
 @Component({
   selector: 'app-preview-step',
@@ -26,7 +27,8 @@ export class PreviewStep implements OnInit {
   constructor(
     private storageService: StorageService,
     private formConfigService: FormConfigService,
-    private rulesEngineService: RulesEngineService
+    private rulesEngineService: RulesEngineService,
+    // private aiService: AiService
   ) {}
 
   ngOnInit() {
@@ -179,5 +181,14 @@ export class PreviewStep implements OnInit {
     // Handle AI command text changes
     // TODO: Implement actual AI filling logic when text is received
     console.log('AI command changed:', text);
+    // console.log(this.fields());
+    // this.aiService.parseNaturalLanguage(text, this.fields(), this.previewForm.value).subscribe({
+    //   next: (message) => {
+    //     console.log(message);
+    //   },
+    //   error: (err) => {
+    //     console.log(err);
+    //   }
+    // });
   }
 }

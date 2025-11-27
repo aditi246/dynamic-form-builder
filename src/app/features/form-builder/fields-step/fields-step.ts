@@ -1,7 +1,8 @@
-import { Component, signal, computed, output } from '@angular/core';
+import { Component, signal, computed, output, effect, input } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { StorageService } from '../../../shared/services/storage.service';
+import { FormsManagementService } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { DefaultsComponent } from '../../../components/defaults/defaults';
 
@@ -33,6 +34,10 @@ export interface FormField {
 export class FieldsStep {
   nextStep = output<void>();
   backStep = output<void>();
+  formName = input<string | null>(null);
+  displayFormName = computed(
+    () => this.formName()?.trim() || this.formsService.getCurrentFormName() || 'Untitled Form'
+  );
 
   private readonly STORAGE_KEY = 'form-builder-fields';
   fields = signal<FormField[]>([]);
@@ -66,8 +71,21 @@ export class FieldsStep {
 
   currentType = signal<string>(this.fieldForm.get('type')?.value || 'text');
 
-  constructor(private storageService: StorageService) {
-    this.loadFields();
+  constructor(
+    private storageService: StorageService,
+    private formsService: FormsManagementService
+  ) {
+    effect(() => {
+      const formId = this.formsService.getCurrentFormId();
+      const formName = this.formName();
+
+      if (formId || formName) {
+        this.loadFields(formId, formName);
+      } else {
+        this.fields.set([]);
+      }
+    });
+    
     this.fieldForm.get('type')?.valueChanges.subscribe((type) => {
       this.currentType.set(type || 'text');
 
@@ -265,6 +283,12 @@ export class FieldsStep {
   }
 
   addField() {
+    const hasFormTarget = this.formsService.getCurrentFormId() || this.formName()?.trim();
+    if (!hasFormTarget) {
+      alert('Please select or create a form before adding fields.');
+      return;
+    }
+
     if (this.fieldForm.valid) {
       const value = this.fieldForm.value;
       // Parse options from double-quoted format
@@ -298,11 +322,21 @@ export class FieldsStep {
         },
       };
 
+      const editingIdx = this.editingIndex();
+      const normalizedName = fieldData.name.trim().toLowerCase();
+      const duplicate = this.fields().some(
+        (f, i) => i !== editingIdx && f.name.trim().toLowerCase() === normalizedName
+      );
+      if (duplicate) {
+        this.fieldForm.get('name')?.setErrors({ duplicate: true });
+        alert('Field name must be unique within a form.');
+        return;
+      }
+
       // Create FormControl with validators
       const formControl = this.createFormControl(fieldData);
       const field: FormField = { ...fieldData, formValue: formControl };
 
-      const editingIdx = this.editingIndex();
       if (editingIdx !== null) {
         // Update existing field with a fresh FormControl
         this.fields.update((fields) => fields.map((f, i) => (i === editingIdx ? field : f)));
@@ -314,8 +348,6 @@ export class FieldsStep {
       this.saveFields();
       this.resetForm();
     }
-    console.log('AFTER');
-    console.log(this.fields());
   }
 
   editingIndex = signal<number | null>(null);
@@ -368,20 +400,47 @@ export class FieldsStep {
       const { formValue, ...fieldWithoutFormControl } = field;
       return fieldWithoutFormControl;
     });
-    this.storageService.setItem(this.STORAGE_KEY, fieldsToSave);
+    
+    let formId = this.formsService.getCurrentFormId();
+    let formName = this.formName()?.trim() || null;
+    
+    if (!formId && !formName) {
+      console.warn('No form selected; fields not saved.');
+      alert('Please select or create a form before saving fields.');
+      return;
+    }
+    
+    const saved = this.formsService.saveFormFields(formId, fieldsToSave, formName);
+    if (!saved) {
+      console.warn('Form not resolved, fields not saved to forms list');
+    }
   }
 
-  private loadFields(): void {
-    const fieldsData = this.storageService.getItem<Omit<FormField, 'formValue'>[]>(
-      this.STORAGE_KEY
-    );
-    if (fieldsData) {
+  private loadFields(formId?: string | null, formName?: string | null): void {
+    const fieldsData = this.formsService.getFormFields(formId, formName);
+    
+    if (fieldsData && fieldsData.length > 0) {
       // Recreate FormControls for each field
       const fieldsWithControls: FormField[] = fieldsData.map((fieldData) => {
         const formControl = this.createFormControl(fieldData as FormField);
         return { ...fieldData, formValue: formControl };
       });
       this.fields.set(fieldsWithControls);
+    } else {
+      const legacyFields = this.storageService.getItem<Omit<FormField, 'formValue'>[]>(
+        this.STORAGE_KEY
+      );
+      if (legacyFields && legacyFields.length > 0) {
+        const fieldsWithControls: FormField[] = legacyFields.map((fieldData) => {
+          const formControl = this.createFormControl(fieldData as FormField);
+          return { ...fieldData, formValue: formControl };
+        });
+        this.fields.set(fieldsWithControls);
+        this.saveFields();
+        this.storageService.removeItem(this.STORAGE_KEY);
+      } else {
+        this.fields.set([]);
+      }
     }
   }
 }

@@ -1,0 +1,121 @@
+<div class="max-w-5xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-semibold text-text mb-2">Forms</h2>
+      <p class="text-muted">
+        Create and manage your forms.
+      </p>
+    </div>
+    <button 
+      type="button"
+      (click)="openCreateModal()"
+      class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium flex items-center gap-2">
+      <app-icon name="plus" class="w-5 h-5"></app-icon>
+      Create New Form
+    </button>
+  </div>
+
+  <!-- Forms List -->
+  @if (formsService.forms().length === 0) {
+    <div class="bg-card rounded-md shadow-sm p-6 border border-border">
+      <div class="text-center py-12">
+        <p class="text-muted mb-4">No forms saved yet. Create your first form to get started.</p>
+        <button 
+          type="button"
+          (click)="openCreateModal()"
+          class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium">
+          Create Form
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="bg-card rounded-md shadow-sm border border-border overflow-hidden">
+      <table class="w-full">
+        <thead class="bg-bg border-b border-border">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-text uppercase tracking-wider">Form Name</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-text uppercase tracking-wider">Last Updated</th>
+            <th class="px-6 py-3 text-right text-xs font-semibold text-text uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          @for (form of formsService.forms(); track form.id) {
+            <tr 
+              (click)="selectForm(form.id)"
+              class="hover:bg-bg cursor-pointer transition-colors">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-text">{{ form.name }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-muted">{{ formatDate(form.updatedAt) }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div class="flex items-center justify-end gap-3">
+                  <button 
+                    type="button"
+                    (click)="copyForm($event, form.id)"
+                    class="p-1 text-muted hover:text-primary transition-colors"
+                    title="Copy form">
+                    <app-icon name="copy" class="w-4 h-4"></app-icon>
+                  </button>
+                  <button 
+                    type="button"
+                    (click)="editForm($event, form.id)"
+                    class="p-1 text-muted hover:text-primary transition-colors"
+                    title="Edit form">
+                    <app-icon name="edit" class="w-4 h-4"></app-icon>
+                  </button>
+                  <button 
+                    type="button"
+                    (click)="deleteForm($event, form.id)"
+                    class="p-1 text-muted hover:text-danger transition-colors"
+                    title="Delete form">
+                    <app-icon name="delete" class="w-4 h-4"></app-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Create Form Modal -->
+  @if (showCreateModal()) {
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" (click)="closeCreateModal()">
+      <div class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border" (click)="$event.stopPropagation()">
+        <h3 class="text-xl font-semibold text-text mb-4">Create New Form</h3>
+        <form [formGroup]="createFormGroup" (ngSubmit)="createForm()" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-text mb-2">Form Name</label>
+            <input
+              type="text"
+              formControlName="name"
+              placeholder="Enter form name"
+              class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              [class.border-danger]="createFormGroup.get('name')?.invalid && createFormGroup.get('name')?.touched">
+            @if (createFormGroup.get('name')?.invalid && createFormGroup.get('name')?.touched) {
+              <p class="text-sm text-danger mt-1">Form name is required</p>
+            }
+          </div>
+          <div class="flex justify-end gap-3">
+            <button 
+              type="button"
+              (click)="closeCreateModal()"
+              class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium">
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium">
+              Create
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>
+
+

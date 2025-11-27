@@ -1,8 +1,9 @@
-import { Component, output, OnInit, signal } from '@angular/core';
+import { Component, output, OnInit, signal, effect } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { FormField } from '../fields-step/fields-step';
-import { StorageService } from '../../../shared/services/storage.service';
+import { Subscription } from 'rxjs';
+import { FormsManagementService } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { AudioTextareaComponent } from '../../../components/audio-textarea/audio-textarea';
 import { FormConfigService } from '../../../shared/services/form-config.service';
@@ -22,28 +23,49 @@ export class PreviewStep implements OnInit {
   fields = signal<FormField[]>([]);
   previewForm = new FormGroup({});
   hiddenFields = signal<Set<string>>(new Set());
-  private readonly STORAGE_KEY = 'form-builder-fields';
+
+  private valueChangesSub?: Subscription;
 
   constructor(
-    private storageService: StorageService,
     private formConfigService: FormConfigService,
     private rulesEngineService: RulesEngineService,
-    // private aiService: AiService
-  ) {}
-
-  ngOnInit() {
-    this.loadFields();
+    private formsService: FormsManagementService
+  ) {
+    effect(() => {
+      this.formsService.forms(); // react to field updates
+      const formId = this.formsService.getCurrentFormId();
+      const formName = this.formsService.getCurrentFormName();
+      if (formId || formName) {
+        this.loadFields(formId, formName);
+      } else {
+        this.resetPreview();
+      }
+    });
   }
 
-  private loadFields() {
-    const fieldsData = this.storageService.getItem<Omit<FormField, 'formValue'>[]>(this.STORAGE_KEY);
-    if (fieldsData) {
+  ngOnInit() {
+    this.loadFields(this.formsService.getCurrentFormId(), this.formsService.getCurrentFormName());
+  }
+
+  private loadFields(formId?: string | null, formName?: string | null) {
+    const fieldsData = this.formsService.getFormFields(formId, formName);
+    if (fieldsData && fieldsData.length > 0) {
       this.fields.set(fieldsData as FormField[]);
       this.formConfigService.setFields(this.fields());
       this.buildForm();
       this.applyRules();
-      this.previewForm.valueChanges.subscribe(() => this.applyRules());
+      this.valueChangesSub?.unsubscribe();
+      this.valueChangesSub = this.previewForm.valueChanges.subscribe(() => this.applyRules());
+    } else {
+      this.resetPreview();
     }
+  }
+
+  private resetPreview() {
+    this.fields.set([]);
+    this.previewForm = new FormGroup({});
+    this.hiddenFields.set(new Set());
+    this.valueChangesSub?.unsubscribe();
   }
 
   private buildForm() {

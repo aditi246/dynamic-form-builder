@@ -1,129 +1,184 @@
 import { Injectable } from '@angular/core';
-import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
-import { FormConfigService, ConditionalRule, DateComparisonRule } from './form-config.service';
+import { CustomRule, RuleCondition, RuleAction, ConditionOperator } from './form-config.service';
+import { FormField } from '../../features/form-builder/fields-step/fields-step';
+
+export interface RuleEvaluationResult {
+  hiddenFields: Set<string>;
+  fieldErrors: Record<string, string>;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class RulesEngineService {
-  constructor(private formConfigService: FormConfigService) {}
+  evaluate(
+    rules: CustomRule[],
+    formValues: Record<string, any>,
+    fields: FormField[]
+  ): RuleEvaluationResult {
+    const hiddenFields = new Set<string>();
+    const fieldErrors: Record<string, string> = {};
 
-  /**
-   * Applies conditional visibility rules (non-blocking)
-   * Returns an object with field names and their visibility state
-   */
-  applyConditionalRules(formValues: { [key: string]: any }): { [fieldName: string]: boolean } {
-    const visibility: { [fieldName: string]: boolean } = {};
-    const rules = this.formConfigService.rules();
-    const fields = this.formConfigService.fields();
-
-    // Initialize all fields as visible
-    fields.forEach(field => {
-      visibility[field.name] = true;
-    });
-
-    // Apply conditional rules
-    rules
-      .filter((rule): rule is ConditionalRule => rule.type === 'conditional')
-      .forEach(rule => {
-        const triggerValue = formValues[rule.triggerField];
-        const conditionMet = this.evaluateCondition(triggerValue, rule.operator, rule.triggerValue);
-
-        if (conditionMet) {
-          if (rule.action === 'show') {
-            visibility[rule.targetField] = true;
-          } else if (rule.action === 'hide') {
-            visibility[rule.targetField] = false;
-          }
-        }
-      });
-
-    return visibility;
-  }
-
-  /**
-   * Creates a validator function for date comparison (blocking)
-   */
-  createDateComparisonValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const formGroup = control.parent;
-      if (!formGroup) return null;
-
-      const rules = this.formConfigService.rules();
-      const dateComparisonRules = rules.filter(
-        (rule): rule is DateComparisonRule => rule.type === 'date-comparison'
-      );
-
-      for (const rule of dateComparisonRules) {
-        const leftValue = formGroup.get(rule.leftField)?.value;
-        const rightValue = formGroup.get(rule.rightField)?.value;
-
-        if (leftValue && rightValue) {
-          const leftDate = new Date(leftValue);
-          const rightDate = new Date(rightValue);
-
-          const isValid = this.compareDates(leftDate, rightDate, rule.comparator);
-          
-          if (!isValid) {
-            return {
-              dateComparison: {
-                message: rule.errorMessage,
-                leftField: rule.leftField,
-                rightField: rule.rightField
-              }
-            };
-          }
-        }
+    rules.forEach(rule => {
+      const conditionsMet = this.conditionsSatisfied(rule.conditions, formValues);
+      if (!conditionsMet) {
+        return;
       }
 
-      return null;
-    };
+      const actionResult = this.applyAction(rule.action, formValues, fields);
+      if (actionResult?.hideField) {
+        hiddenFields.add(actionResult.hideField);
+      }
+      if (actionResult?.showField) {
+        hiddenFields.delete(actionResult.showField);
+      }
+      if (actionResult?.fieldError) {
+        fieldErrors[actionResult.fieldError.field] = actionResult.fieldError.message;
+      }
+    });
+
+    return { hiddenFields, fieldErrors };
   }
 
-  private evaluateCondition(value: any, operator: string, triggerValue: string): boolean {
-    if (value === null || value === undefined) return false;
+  private conditionsSatisfied(conditions: RuleCondition[], values: Record<string, any>): boolean {
+    if (!conditions || conditions.length === 0) {
+      return true;
+    }
+
+    return conditions.every(condition => {
+      const left = values[condition.field];
+      return this.evaluateCondition(left, condition.operator, condition.value, condition.values);
+    });
+  }
+
+  private applyAction(
+    action: RuleAction,
+    values: Record<string, any>,
+    fields: FormField[]
+  ): { hideField?: string; showField?: string; fieldError?: { field: string; message: string } } | null {
+    if (action.type === 'hide-field') {
+      return { hideField: action.targetField };
+    }
+
+    if (action.type === 'show-field') {
+      return { showField: action.targetField };
+    }
+
+    if (action.type === 'enforce-comparison') {
+      const targetValue = values[action.targetField];
+      const comparatorValue =
+        action.valueSource === 'static'
+          ? action.value
+          : values[action.otherField || ''];
+
+      const targetField = fields.find(f => f.name === action.targetField);
+      const comparatorField = action.valueSource === 'field'
+        ? fields.find(f => f.name === action.otherField)
+        : undefined;
+
+      const left = this.normalizeValue(targetValue, targetField?.type);
+      const right = this.normalizeValue(
+        comparatorValue,
+        comparatorField?.type || targetField?.type
+      );
+
+      if (left.value === null || right.value === null) {
+        return null;
+      }
+
+      const passes = this.compareValues(left.value, right.value, action.comparator);
+      if (!passes) {
+        return {
+          fieldError: {
+            field: action.targetField,
+            message:
+              action.errorMessage ||
+              `Must be ${action.comparator} ${action.valueSource === 'static' ? action.value : 'selected field'}`
+          }
+        };
+      }
+    }
+
+    return null;
+  }
+
+  private evaluateCondition(
+    value: any,
+    operator: ConditionOperator,
+    triggerValue?: string,
+    triggerValues?: string[]
+  ): boolean {
+    if (operator === 'isTrue') {
+      return value === true || value === 'true';
+    }
+    if (operator === 'isFalse') {
+      return value === false || value === 'false';
+    }
+    if (value === null || value === undefined || value === '') {
+      return false;
+    }
+
+    const multi = triggerValues && triggerValues.length ? triggerValues.map(v => String(v)) : null;
 
     switch (operator) {
       case 'equals':
-      case '==':
-        return String(value) === triggerValue;
-      case 'not-equals':
-      case '!=':
-        return String(value) !== triggerValue;
-      case 'greater-than':
-      case '>':
-        return Number(value) > Number(triggerValue);
-      case 'less-than':
-      case '<':
-        return Number(value) < Number(triggerValue);
-      case 'greater-than-equal':
-      case '>=':
-        return Number(value) >= Number(triggerValue);
-      case 'less-than-equal':
-      case '<=':
-        return Number(value) <= Number(triggerValue);
+        if (multi) {
+          return multi.includes(String(value));
+        }
+        return String(value) === String(triggerValue);
+      case 'notEquals':
+        if (multi) {
+          return !multi.includes(String(value));
+        }
+        return String(value) !== String(triggerValue);
       case 'contains':
-        return String(value).toLowerCase().includes(triggerValue.toLowerCase());
+        return String(value).toLowerCase().includes(String(triggerValue || '').toLowerCase());
+      case 'gt':
+        return Number(value) > Number(triggerValue);
+      case 'gte':
+        return Number(value) >= Number(triggerValue);
+      case 'lt':
+        return Number(value) < Number(triggerValue);
+      case 'lte':
+        return Number(value) <= Number(triggerValue);
       default:
         return false;
     }
   }
 
-  private compareDates(leftDate: Date, rightDate: Date, comparator: string): boolean {
+  private normalizeValue(raw: any, type?: string): { value: number | string | null } {
+    if (raw === null || raw === undefined || raw === '') {
+      return { value: null };
+    }
+
+    if (type === 'date') {
+      const date = new Date(raw);
+      return isNaN(date.getTime()) ? { value: null } : { value: date.getTime() };
+    }
+
+    const numeric = Number(raw);
+    if (!isNaN(numeric)) {
+      return { value: numeric };
+    }
+
+    return { value: String(raw).toLowerCase() };
+  }
+
+  private compareValues(left: number | string, right: number | string, comparator: string): boolean {
     switch (comparator) {
-      case '<=':
-        return leftDate <= rightDate;
-      case '>=':
-        return leftDate >= rightDate;
       case '<':
-        return leftDate < rightDate;
+        return left < right;
+      case '<=':
+        return left <= right;
       case '>':
-        return leftDate > rightDate;
+        return left > right;
+      case '>=':
+        return left >= right;
+      case '!=':
+        return left !== right;
       case '==':
-        return leftDate.getTime() === rightDate.getTime();
       default:
-        return true;
+        return left === right;
     }
   }
 }
-

@@ -13,6 +13,7 @@
     
     <form [formGroup]="previewForm" class="space-y-6">
       @for (field of fields(); track field.name) {
+        @if (!isHidden(field.name)) {
         <div>
           <label class="block text-sm font-medium text-text mb-2">
             {{ field.label }}
@@ -96,6 +97,7 @@
             }
           }
         </div>
+        }
       }
     </form>
   </div>
@@ -116,4 +118,3 @@
     </button>
   </div>
 </div>
-

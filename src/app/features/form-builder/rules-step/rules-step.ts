@@ -1,8 +1,13 @@
 import { Component, OnInit, signal, computed, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FormConfigService, ConditionalRule, DateComparisonRule, Rule } from '../../../shared/services/form-config.service';
-import { RulesEngineService } from '../../../shared/services/rules-engine.service';
+import {
+  FormConfigService,
+  CustomRule,
+  RuleCondition,
+  ConditionOperator,
+  RuleAction
+} from '../../../shared/services/form-config.service';
 import { StorageService } from '../../../shared/services/storage.service';
 import { FormField } from '../fields-step/fields-step';
 import { IconComponent } from '../../../components/icon/icon';
@@ -16,56 +21,68 @@ import { IconComponent } from '../../../components/icon/icon';
 export class RulesStep implements OnInit {
   nextStep = output<void>();
   backStep = output<void>();
-  showConditionalForm = signal<boolean>(false);
-  showComparisonForm = signal<boolean>(false);
-  editingRuleId = signal<string | null>(null);
-  
+
   fields = signal<FormField[]>([]);
   rules = computed(() => this.formConfigService.rules());
-  
-  conditionalForm = new FormGroup({
-    triggerField: new FormControl('', [Validators.required]),
-    operator: new FormControl('', [Validators.required]),
-    triggerValue: new FormControl('', [Validators.required]),
-    action: new FormControl('', [Validators.required]),
-    targetField: new FormControl('', [Validators.required])
+  groupedRules = computed(() => {
+    const groups: { targetField: string; rules: CustomRule[] }[] = [];
+    const byTarget: Record<string, CustomRule[]> = {};
+    this.rules().forEach(rule => {
+      if (!byTarget[rule.action.targetField]) {
+        byTarget[rule.action.targetField] = [];
+      }
+      byTarget[rule.action.targetField].push(rule);
+    });
+    Object.keys(byTarget).forEach(target => {
+      groups.push({ targetField: target, rules: byTarget[target] });
+    });
+    return groups;
+  });
+  editingRuleId = signal<string | null>(null);
+  conditions = signal<RuleCondition[]>([]);
+
+  ruleForm = new FormGroup({
+    name: new FormControl('', [Validators.required]),
+    targetField: new FormControl('', [Validators.required]),
+    actionType: new FormControl<'validation' | 'visibility'>('validation', [Validators.required]),
+    comparator: new FormControl<'<' | '<=' | '>' | '>=' | '==' | '!='>('<=' , [Validators.required]),
+    thresholdType: new FormControl<'static' | 'field'>('static', [Validators.required]),
+    thresholdValue: new FormControl(''),
+    thresholdField: new FormControl(''),
+    errorMessage: new FormControl('Value must satisfy the rule'),
+    visibilityBehavior: new FormControl<'hide' | 'show'>('hide', [Validators.required])
   });
 
-  comparisonForm = new FormGroup({
-    leftField: new FormControl('', [Validators.required]),
-    comparator: new FormControl('<=', [Validators.required]),
-    rightField: new FormControl('', [Validators.required]),
-    errorMessage: new FormControl('', [Validators.required])
+  conditionDraft = new FormGroup({
+    field: new FormControl('', [Validators.required]),
+    operator: new FormControl<ConditionOperator>('equals', [Validators.required]),
+    value: new FormControl(''),
+    multiValues: new FormControl<string[]>([])
   });
 
-  operators = [
-    { label: 'Equals', value: 'equals' },
-    { label: 'Not equal to', value: 'not-equals' },
-    { label: 'Greater than', value: 'greater-than' },
-    { label: 'Less than', value: 'less-than' },
-    { label: 'Greater than or equal', value: 'greater-than-equal' },
-    { label: 'Less than or equal', value: 'less-than-equal' },
-    { label: 'Contains', value: 'contains' }
+  conditionOperators = [
+    { label: 'Equals', value: 'equals' as ConditionOperator },
+    { label: 'Not equals', value: 'notEquals' as ConditionOperator },
+    { label: 'Contains', value: 'contains' as ConditionOperator },
+    { label: 'Greater than', value: 'gt' as ConditionOperator },
+    { label: 'Greater or equal', value: 'gte' as ConditionOperator },
+    { label: 'Less than', value: 'lt' as ConditionOperator },
+    { label: 'Less or equal', value: 'lte' as ConditionOperator },
+    { label: 'Is true', value: 'isTrue' as ConditionOperator },
+    { label: 'Is false', value: 'isFalse' as ConditionOperator }
   ];
 
   comparators = [
-    { label: 'Less than or equal (≤)', value: '<=' },
-    { label: 'Greater than or equal (≥)', value: '>=' },
     { label: 'Less than (<)', value: '<' },
+    { label: 'Less than or equal (≤)', value: '<=' },
     { label: 'Greater than (>)', value: '>' },
-    { label: 'Equal (==)', value: '==' }
-  ];
-
-  actions = [
-    { label: 'Show', value: 'show' },
-    { label: 'Hide', value: 'hide' },
-    { label: 'Require', value: 'require' },
-    { label: 'Optional', value: 'optional' }
+    { label: 'Greater than or equal (≥)', value: '>=' },
+    { label: 'Equal (==)', value: '==' },
+    { label: 'Not equal (!=)', value: '!=' }
   ];
 
   constructor(
     private formConfigService: FormConfigService,
-    private rulesEngineService: RulesEngineService,
     private storageService: StorageService
   ) {}
 
@@ -81,100 +98,138 @@ export class RulesStep implements OnInit {
     }
   }
 
-  openConditionalForm() {
-    this.showConditionalForm.set(true);
-    this.showComparisonForm.set(false);
-    this.editingRuleId.set(null);
-    this.conditionalForm.reset();
+  addCondition() {
+    if (this.conditionDraft.invalid) return;
+    const value = this.conditionDraft.value;
+    const condition: RuleCondition = {
+      field: value.field || '',
+      operator: (value.operator as ConditionOperator) || 'equals',
+      value:
+        value.operator === 'isTrue' || value.operator === 'isFalse'
+          ? undefined
+          : value.value || undefined,
+      values: this.isSelectField(value.field || '') ? value.multiValues || [] : undefined
+    };
+    this.conditions.update(list => [...list, condition]);
+    this.conditionDraft.reset({ operator: 'equals', multiValues: [] });
   }
 
-  openComparisonForm() {
-    this.showComparisonForm.set(true);
-    this.showConditionalForm.set(false);
-    this.editingRuleId.set(null);
-    this.comparisonForm.reset();
+  removeCondition(index: number) {
+    this.conditions.update(list => list.filter((_, i) => i !== index));
   }
 
-  closeForms() {
-    this.showConditionalForm.set(false);
-    this.showComparisonForm.set(false);
-    this.editingRuleId.set(null);
-    this.conditionalForm.reset();
-    this.comparisonForm.reset();
-  }
+  saveRule(keepTarget = false) {
+    const formValue = this.ruleForm.value;
+    const targetField = formValue.targetField;
+    const actionType = formValue.actionType;
 
-  saveConditionalRule() {
-    if (this.conditionalForm.valid) {
-      const formValue = this.conditionalForm.value;
-      const rule: ConditionalRule = {
-        id: this.editingRuleId() || this.generateId(),
-        type: 'conditional',
-        triggerField: formValue.triggerField!,
-        operator: formValue.operator!,
-        triggerValue: formValue.triggerValue!,
-        action: formValue.action as 'show' | 'hide' | 'require' | 'optional',
-        targetField: formValue.targetField!
-      };
-
-      if (this.editingRuleId()) {
-        this.formConfigService.updateRule(this.editingRuleId()!, rule);
-      } else {
-        this.formConfigService.addRule(rule);
-      }
-
-      this.closeForms();
+    if (!targetField || !actionType) {
+      this.ruleForm.markAllAsTouched();
+      return;
     }
-  }
 
-  saveComparisonRule() {
-    if (this.comparisonForm.valid) {
-      const formValue = this.comparisonForm.value;
-      const rule: DateComparisonRule = {
-        id: this.editingRuleId() || this.generateId(),
-        type: 'date-comparison',
-        leftField: formValue.leftField!,
-        comparator: formValue.comparator as '<=' | '>=' | '<' | '>' | '==',
-        rightField: formValue.rightField!,
-        errorMessage: formValue.errorMessage!
+    let action: RuleAction;
+    if (actionType === 'visibility') {
+      action = {
+        type: formValue.visibilityBehavior === 'show' ? 'show-field' : 'hide-field',
+        targetField
       };
-
-      if (this.editingRuleId()) {
-        this.formConfigService.updateRule(this.editingRuleId()!, rule);
-      } else {
-        this.formConfigService.addRule(rule);
-      }
-
-      this.closeForms();
-    }
-  }
-
-  editRule(rule: Rule) {
-    this.editingRuleId.set(rule.id);
-    
-    if (rule.type === 'conditional') {
-      this.conditionalForm.patchValue({
-        triggerField: rule.triggerField,
-        operator: rule.operator,
-        triggerValue: rule.triggerValue,
-        action: rule.action,
-        targetField: rule.targetField
-      });
-      this.openConditionalForm();
     } else {
-      this.comparisonForm.patchValue({
-        leftField: rule.leftField,
-        comparator: rule.comparator,
-        rightField: rule.rightField,
-        errorMessage: rule.errorMessage
-      });
-      this.openComparisonForm();
+      action = {
+        type: 'enforce-comparison',
+        targetField,
+        comparator: (formValue.comparator as any) || '<=',
+        valueSource: (formValue.thresholdType as any) || 'static',
+        value:
+          formValue.thresholdType === 'static'
+            ? this.toNumber(formValue.thresholdValue)
+            : undefined,
+        otherField: formValue.thresholdType === 'field' ? formValue.thresholdField || undefined : undefined,
+        errorMessage: formValue.errorMessage || undefined
+      };
     }
+
+    if (actionType === 'validation' && action.type === 'enforce-comparison') {
+      if (
+        action.valueSource === 'static' &&
+        (action.value === null || action.value === undefined || Number.isNaN(action.value))
+      ) {
+        this.ruleForm.get('thresholdValue')?.setErrors({ required: true });
+        return;
+      }
+
+      if (action.valueSource === 'field' && !action.otherField) {
+        this.ruleForm.get('thresholdField')?.setErrors({ required: true });
+        return;
+      }
+    }
+
+    const rule: CustomRule = {
+      id: this.editingRuleId() || this.generateId(),
+      name: formValue.name || 'Custom rule',
+      conditions: this.conditions(),
+      action
+    };
+
+    if (this.editingRuleId()) {
+      this.formConfigService.updateRule(this.editingRuleId()!, rule);
+    } else {
+      this.formConfigService.addRule(rule);
+    }
+
+    this.resetForms(keepTarget ? targetField : undefined);
+  }
+
+  editRule(rule: CustomRule) {
+    this.editingRuleId.set(rule.id);
+    this.conditions.set(rule.conditions || []);
+
+    this.ruleForm.patchValue({
+      name: rule.name,
+      targetField: rule.action.targetField,
+      actionType: rule.action.type === 'enforce-comparison' ? 'validation' : 'visibility',
+      comparator: rule.action.type === 'enforce-comparison' ? rule.action.comparator : '<=',
+      thresholdType: rule.action.type === 'enforce-comparison' ? rule.action.valueSource : 'static',
+      thresholdValue:
+        rule.action.type === 'enforce-comparison' && rule.action.valueSource === 'static'
+          ? (rule.action.value as any) ?? ''
+          : '',
+      thresholdField:
+        rule.action.type === 'enforce-comparison' && rule.action.valueSource === 'field'
+          ? rule.action.otherField ?? ''
+          : '',
+      errorMessage: rule.action.type === 'enforce-comparison' ? rule.action.errorMessage || '' : 'Value must satisfy the rule',
+      visibilityBehavior: rule.action.type === 'show-field' ? 'show' : 'hide'
+    });
   }
 
   deleteRule(id: string) {
-    if (confirm('Are you sure you want to delete this rule?')) {
-      this.formConfigService.deleteRule(id);
+    this.formConfigService.deleteRule(id);
+    if (this.editingRuleId() === id) {
+      this.resetForms();
     }
+  }
+
+  cancelEditing() {
+    this.resetForms();
+  }
+
+  formatRule(rule: CustomRule): string {
+    const conditions =
+      rule.conditions?.length > 0
+        ? rule.conditions.map(c => this.conditionText(c)).join(' AND ')
+        : 'Always';
+
+    if (rule.action.type === 'enforce-comparison') {
+      const right =
+        rule.action.valueSource === 'static'
+          ? rule.action.value
+          : this.getFieldLabel(rule.action.otherField || '');
+      return `${conditions} -> ${this.getFieldLabel(rule.action.targetField)} must be ${rule.action.comparator} ${right}`;
+    }
+
+    const visibilityAction = rule.action.type === 'show-field' ? 'Show' : 'Hide';
+    return `${conditions} -> ${visibilityAction} ${this.getFieldLabel(rule.action.targetField)}`;
   }
 
   getFieldLabel(fieldName: string): string {
@@ -182,24 +237,51 @@ export class RulesStep implements OnInit {
     return field ? field.label : fieldName;
   }
 
-  formatRule(rule: Rule): string {
-    if (rule.type === 'conditional') {
-      const triggerLabel = this.getFieldLabel(rule.triggerField);
-      const targetLabel = this.getFieldLabel(rule.targetField);
-      const operatorLabel = this.operators.find(op => op.value === rule.operator)?.label || rule.operator;
-      const actionLabel = rule.action.charAt(0).toUpperCase() + rule.action.slice(1);
-      
-      return `IF '${triggerLabel}' is '${operatorLabel}' '${rule.triggerValue}' THEN '${actionLabel}' '${targetLabel}'.`;
-    } else {
-      const leftLabel = this.getFieldLabel(rule.leftField);
-      const rightLabel = this.getFieldLabel(rule.rightField);
-      const comparatorLabel = this.comparators.find(comp => comp.value === rule.comparator)?.label || rule.comparator;
-      
-      return `VALIDATE that '${leftLabel}' is '${rule.comparator}' '${rightLabel}'. On failure, show: "${rule.errorMessage}"`;
-    }
+  conditionText(condition: RuleCondition): string {
+    const operator = this.conditionOperators.find(op => op.value === condition.operator)?.label || condition.operator;
+    const fieldLabel = this.getFieldLabel(condition.field);
+    const multi =
+      condition.values && condition.values.length
+        ? condition.values.join(' or ')
+        : condition.value || '';
+    return `${fieldLabel} ${operator}${multi ? ' ' + multi : ''}`;
+  }
+
+  isValidationAction(): boolean {
+    return this.ruleForm.value.actionType === 'validation';
+  }
+
+  resetForms(keepTargetField?: string) {
+    this.ruleForm.reset({
+      actionType: 'validation',
+      comparator: '<=',
+      thresholdType: 'static',
+      visibilityBehavior: 'hide',
+      errorMessage: 'Value must satisfy the rule',
+      targetField: keepTargetField ?? ''
+    });
+    this.conditionDraft.reset({ operator: 'equals' });
+    this.conditions.set([]);
+    this.editingRuleId.set(null);
   }
 
   private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return 'rule-' + Math.random().toString(36).substring(2, 10);
+  }
+
+  private toNumber(value: any): number | undefined {
+    if (value === null || value === undefined || value === '') return undefined;
+    const num = Number(value);
+    return Number.isNaN(num) ? undefined : num;
+  }
+
+  isSelectField(fieldName: string): boolean {
+    const field = this.fields().find(f => f.name === fieldName);
+    return field?.type === 'select';
+  }
+
+  getSelectOptions(fieldName: string): string[] {
+    const field = this.fields().find(f => f.name === fieldName);
+    return field?.options || [];
   }
 }

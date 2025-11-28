@@ -49,9 +49,11 @@ export class FieldsStep {
   displayFormName = computed(
     () => this.formName()?.trim() || this.formsService.getCurrentFormName() || 'Untitled Form'
   );
+  draggingIndex = signal<number | null>(null);
 
   private readonly STORAGE_KEY = 'form-builder-fields';
   fields = signal<FormField[]>([]);
+  sortDirection = signal<'asc' | 'desc'>('asc');
 
   fieldForm = new FormGroup({
     label: new FormControl('', [Validators.required]),
@@ -427,6 +429,42 @@ export class FieldsStep {
 
   deleteField(index: number) {
     this.fields.update((fields) => fields.filter((_, i) => i !== index));
+    this.saveFields();
+  }
+
+  sortByLabel() {
+    const dir = this.sortDirection() === 'asc' ? 'desc' : 'asc';
+    this.sortDirection.set(dir);
+    this.fields.update((fields) =>
+      [...fields].sort((a, b) =>
+        dir === 'asc'
+          ? a.label.localeCompare(b.label)
+          : b.label.localeCompare(a.label)
+      )
+    );
+    this.saveFields();
+  }
+
+  onDragStart(index: number) {
+    this.draggingIndex.set(index);
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+  }
+
+  onDrop(event: DragEvent, index: number) {
+    event.preventDefault();
+    const from = this.draggingIndex();
+    if (from === null || from === index) {
+      this.draggingIndex.set(null);
+      return;
+    }
+    const updated = [...this.fields()];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(index, 0, moved);
+    this.fields.set(updated);
+    this.draggingIndex.set(null);
     this.saveFields();
   }
 

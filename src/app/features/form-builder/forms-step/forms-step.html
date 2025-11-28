@@ -99,6 +99,30 @@
               <p class="text-sm text-danger mt-1">Form name is required</p>
             }
           </div>
+          <div class="flex items-start gap-3">
+            <input
+              type="checkbox"
+              formControlName="provideContext"
+              id="provideContext"
+              class="mt-1 w-4 h-4 text-primary border-border rounded"
+            />
+            <div class="flex flex-col">
+              <label for="provideContext" class="text-sm font-medium text-text">Do you want to provide input data?</label>
+              <p class="text-xs text-muted">If yes, paste a JSON array of key/displayName/value entries (e.g., user type, location, gender). If no, we'll use an empty context.</p>
+            </div>
+          </div>
+          @if (createFormGroup.get('provideContext')?.value) {
+            <div>
+              <label class="block text-sm font-medium text-text mb-2">Context JSON</label>
+              <textarea
+                formControlName="userContextJson"
+                rows="4"
+                placeholder='[{"key":"1","displayName":"User Type","value":"Admin"},{"key":"2","displayName":"Location","value":"India"}]'
+                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
+              ></textarea>
+              <p class="text-xs text-muted mt-1">Example: [{{ '{' }}"key":"1","displayName":"User Type","value":"Admin"{{ '}' }}, {{ '{' }}"key":"2","displayName":"Location","value":"India"{{ '}' }}]</p>
+            </div>
+          }
           <div class="flex justify-end gap-3">
             <button 
               type="button"
@@ -117,5 +141,3 @@
     </div>
   }
 </div>
-
-

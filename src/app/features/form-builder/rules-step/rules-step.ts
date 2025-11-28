@@ -23,6 +23,8 @@ export class RulesStep implements OnInit {
   backStep = output<void>();
 
   fields = signal<FormField[]>([]);
+  contextFieldNames = signal<Set<string>>(new Set());
+  targetFields = computed(() => this.fields().filter(f => !this.contextFieldNames().has(f.name)));
   rules = computed(() => this.formConfigService.rules());
   groupedRules = computed(() => {
     const groups: { targetField: string; rules: CustomRule[] }[] = [];
@@ -104,11 +106,29 @@ export class RulesStep implements OnInit {
   }
 
   private loadFields() {
-    const fieldsData = this.formsService.getFormFields(
-      this.formsService.getCurrentFormId(),
-      this.formsService.getCurrentFormName()
-    );
-    this.fields.set((fieldsData as FormField[]) || []);
+    const formId = this.formsService.getCurrentFormId();
+    const formName = this.formsService.getCurrentFormName();
+    const fieldsData = this.formsService.getFormFields(formId, formName) || [];
+    const contextFields = this.getUserContextFields();
+
+    const merged = [
+      ...contextFields.filter(ctx => !fieldsData.some(f => f.name === ctx.name)),
+      ...fieldsData
+    ];
+
+    this.contextFieldNames.set(new Set(contextFields.map(f => f.name)));
+    this.fields.set((merged as FormField[]) || []);
+  }
+
+  private getUserContextFields(): FormField[] {
+    const ctx = this.formsService.getFormContext(this.formsService.getCurrentFormId()) || [];
+    return ctx.map(entry => ({
+      label: entry.displayName || entry.key,
+      name: entry.key,
+      type: 'text',
+      required: true,
+      default: entry.value
+    }));
   }
 
   addCondition() {

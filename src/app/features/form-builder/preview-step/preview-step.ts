@@ -3,7 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators, FormsModule } 
 import { CommonModule } from '@angular/common';
 import { FormField } from '../fields-step/fields-step';
 import { Subscription } from 'rxjs';
-import { FormsManagementService } from '../../../shared/services/forms-management.service';
+import { FormsManagementService, SavedForm } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { AudioTextareaComponent } from '../../../components/audio-textarea/audio-textarea';
 import { FormConfigService } from '../../../shared/services/form-config.service';
@@ -22,6 +22,8 @@ export class PreviewStep implements OnInit {
   fields = signal<FormField[]>([]);
   previewForm = new FormGroup({});
   hiddenFields = signal<Set<string>>(new Set());
+  contextFieldNames = signal<Set<string>>(new Set());
+  isContextField = (name: string) => this.contextFieldNames().has(name);
 
   private valueChangesSub?: Subscription;
 
@@ -47,9 +49,16 @@ export class PreviewStep implements OnInit {
   }
 
   private loadFields(formId?: string | null, formName?: string | null) {
-    const fieldsData = this.formsService.getFormFields(formId, formName);
-    if (fieldsData && fieldsData.length > 0) {
-      this.fields.set(fieldsData as FormField[]);
+    const fieldsData = this.formsService.getFormFields(formId, formName) || [];
+    const contextFields = this.getUserContextFields();
+    const mergedFields: FormField[] = [
+      ...contextFields.filter(ctx => !fieldsData.some(f => f.name === ctx.name)),
+      ...(fieldsData as FormField[])
+    ];
+
+    if (mergedFields && mergedFields.length > 0) {
+      this.contextFieldNames.set(new Set(contextFields.map(f => f.name)));
+      this.fields.set(mergedFields as FormField[]);
       this.formConfigService.setFields(this.fields());
       this.buildForm();
       this.applyRules();
@@ -67,8 +76,22 @@ export class PreviewStep implements OnInit {
     this.valueChangesSub?.unsubscribe();
   }
 
+  private getUserContextFields(): FormField[] {
+    const ctx = this.formsService.getFormContext(this.formsService.getCurrentFormId()) || [];
+    return ctx.map(entry => ({
+      label: entry.displayName || entry.key,
+      name: entry.key,
+      type: 'text',
+      required: true,
+      default: entry.value
+    }));
+  }
+
   private buildForm() {
     const group: { [key: string]: FormControl } = {};
+    const contextValues = this.formsService.getFormContext(
+      this.formsService.getCurrentFormId()
+    ) || [];
     
     this.fields().forEach(field => {
       const validators: any[] = [];
@@ -106,7 +129,11 @@ export class PreviewStep implements OnInit {
       
       // Set default value
       let defaultValue: any = '';
-      if (field.default !== undefined && field.default !== null && field.default !== '') {
+      const ctxValue = contextValues.find(entry => entry.key === field.name)?.value;
+
+      if (ctxValue !== undefined && ctxValue !== null) {
+        defaultValue = ctxValue;
+      } else if (field.default !== undefined && field.default !== null && field.default !== '') {
         defaultValue = field.default;
       } else {
         if (field.type === 'checkbox') {
@@ -123,9 +150,17 @@ export class PreviewStep implements OnInit {
   }
 
   private applyRules() {
+    const contextValues = this.formsService.getFormContext(
+      this.formsService.getCurrentFormId()
+    ) || [];
+    const evaluationValues = {
+      ...contextValues.reduce((acc, entry) => ({ ...acc, [entry.key]: entry.value }), {}),
+      ...this.previewForm.getRawValue()
+    };
+
     const evaluation = this.rulesEngineService.evaluate(
       this.formConfigService.rules(),
-      this.previewForm.getRawValue(),
+      evaluationValues,
       this.fields()
     );
 

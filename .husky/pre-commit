@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 # Run prettier check on all files before commit
-npx --no -- prettier --write .
+npx --no -- prettier --check .

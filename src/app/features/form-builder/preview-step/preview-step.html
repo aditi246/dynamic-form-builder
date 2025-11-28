@@ -58,13 +58,26 @@
                 [class.border-border]="!isFieldInvalid(field.name)"
                 class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card appearance-none pr-10">
                 <option value="">Select {{ field.label.toLowerCase() }}</option>
-                @for (option of field.options; track option) {
-                  <option [value]="option">{{ option }}</option>
+                @if (isOptionsLoading(field.name)) {
+                  <option disabled>Loading...</option>
+                }
+                @for (option of getOptionsForField(field); track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
                 }
               </select>
               <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                 <app-icon name="chevron-down" class="w-5 h-5 text-muted"></app-icon>
               </div>
+            </div>
+            @if (getOptionError(field.name)) {
+              <p class="text-sm text-danger mt-1">{{ getOptionError(field.name) }}</p>
+            } @else if (!isOptionsLoading(field.name) && getOptionsForField(field).length === 0) {
+              <p class="text-sm text-muted mt-1">No options available.</p>
+            }
+            <div class="text-right">
+              @if (field.selectSource === 'api') {
+                <button type="button" (click)="refreshOptions(field)" class="text-xs text-primary hover:underline">Refresh options</button>
+              }
             </div>
             @if (isFieldInvalid(field.name)) {
               <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>

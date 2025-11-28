@@ -7,6 +7,7 @@ export type ConditionOperator =
   | 'equals'
   | 'notEquals'
   | 'contains'
+  | 'not-contains'
   | 'gt'
   | 'gte'
   | 'lt'
@@ -24,13 +25,15 @@ export interface RuleCondition {
 export type RuleAction =
   | { type: 'hide-field'; targetField: string }
   | { type: 'show-field'; targetField: string }
+  | { type: 'hide-options'; targetField: string; options: string[] }
   | {
       type: 'enforce-comparison';
       targetField: string;
-      comparator: '<' | '<=' | '>' | '>=' | '==' | '!=';
+      comparator: '<' | '<=' | '>' | '>=' | '==' | '!=' | 'contains' | 'not-contains';
       valueSource: 'static' | 'field';
       value?: number;
       otherField?: string;
+      offset?: number;
       errorMessage?: string;
     };
 

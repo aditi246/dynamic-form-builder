@@ -43,6 +43,7 @@ export class PreviewStep implements OnInit, OnDestroy {
   selectOptions = signal<Record<string, { label: string; value: any }[]>>({});
   loadingOptions = signal<Record<string, boolean>>({});
   optionErrors = signal<Record<string, string>>({});
+  hiddenOptionValues = signal<Record<string, Set<string>>>({});
   contextFieldNames = signal<Set<string>>(new Set());
   filePreviews = signal<Record<string, FilePreviewEntry[]>>({});
   blurryWarnings = signal<Record<string, number | null>>({});
@@ -211,6 +212,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     );
 
     this.hiddenFields.set(evaluation.hiddenFields);
+    this.hiddenOptionValues.set(evaluation.optionHides);
 
     this.fields().forEach(field => {
       const control = this.getFieldControl(field.name);
@@ -287,11 +289,16 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   getOptionsForField(field: FormField): { label: string; value: any }[] {
     if (field.type !== 'select') return [];
+    const hiddenSet = this.hiddenOptionValues()[field.name] || new Set<string>();
     if (field.selectSource === 'api') {
       const loaded = this.selectOptions()[field.name];
-      if (loaded && loaded.length) return loaded;
+      if (loaded && loaded.length) {
+        return loaded.filter(opt => !hiddenSet.has(String(opt.value)));
+      }
     }
-    return (field.options || []).map(opt => ({ label: opt, value: opt }));
+    return (field.options || [])
+      .map(opt => ({ label: opt, value: opt }))
+      .filter(opt => !hiddenSet.has(String(opt.value)));
   }
 
   isOptionsLoading(fieldName: string): boolean {

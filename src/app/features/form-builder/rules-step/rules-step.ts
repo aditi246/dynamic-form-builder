@@ -36,8 +36,10 @@ export class RulesStep implements OnInit {
   backStep = output<void>();
 
   fields = signal<FormField[]>([]);
-  contextFieldNames = signal<Set<string>>(new Set());
-  targetFields = computed(() => this.fields().filter(f => !this.contextFieldNames().has(f.name)));
+  userContextEntriesSignal = signal<
+    { key: string; displayName: string; value: string }[]
+  >([]);
+  targetFields = computed(() => this.fields());
   rules = computed(() => this.formConfigService.rules());
   selectOptions = signal<Record<string, { label: string; value: any }[]>>({});
   loadingOptions = signal<Record<string, boolean>>({});
@@ -62,17 +64,20 @@ export class RulesStep implements OnInit {
   ruleForm = new FormGroup({
     name: new FormControl('', [Validators.required]),
     targetField: new FormControl('', [Validators.required]),
-    actionType: new FormControl<'validation' | 'visibility'>('validation', [
-      Validators.required,
-    ]),
-    comparator: new FormControl<'<' | '<=' | '>' | '>=' | '==' | '!='>('<=', [
-      Validators.required,
-    ]),
+    actionType: new FormControl<'validation' | 'visibility' | 'options'>(
+      'validation',
+      [Validators.required],
+    ),
+    comparator: new FormControl<
+      '<' | '<=' | '>' | '>=' | '==' | '!=' | 'contains' | 'not-contains'
+    >('<=' as any, [Validators.required]),
     thresholdType: new FormControl<'static' | 'field'>('static', [
       Validators.required,
     ]),
     thresholdValue: new FormControl(''),
     thresholdField: new FormControl(''),
+    thresholdOffset: new FormControl<string>(''),
+    hideOptionValues: new FormControl<string[]>([]),
     errorMessage: new FormControl('Value must satisfy the rule'),
     visibilityBehavior: new FormControl<'hide' | 'show'>('hide', [
       Validators.required,
@@ -92,6 +97,7 @@ export class RulesStep implements OnInit {
     { label: 'Equals', value: 'equals' as ConditionOperator },
     { label: 'Not equals', value: 'notEquals' as ConditionOperator },
     { label: 'Contains', value: 'contains' as ConditionOperator },
+    { label: 'Does not contain', value: 'not-contains' as ConditionOperator },
     { label: 'Greater than', value: 'gt' as ConditionOperator },
     { label: 'Greater or equal', value: 'gte' as ConditionOperator },
     { label: 'Less than', value: 'lt' as ConditionOperator },
@@ -100,13 +106,20 @@ export class RulesStep implements OnInit {
     { label: 'Is false', value: 'isFalse' as ConditionOperator },
   ];
 
-  comparators = [
+  numericComparators = [
     { label: 'Less than (<)', value: '<' },
     { label: 'Less than or equal (≤)', value: '<=' },
     { label: 'Greater than (>)', value: '>' },
     { label: 'Greater than or equal (≥)', value: '>=' },
     { label: 'Equal (==)', value: '==' },
     { label: 'Not equal (!=)', value: '!=' },
+  ];
+
+  textComparators = [
+    { label: 'Equals', value: '==' },
+    { label: 'Not equal', value: '!=' },
+    { label: 'Contains', value: 'contains' },
+    { label: 'Does not contain', value: 'not-contains' },
   ];
 
   constructor(
@@ -125,6 +138,21 @@ export class RulesStep implements OnInit {
         this.fields.set([]);
       }
     });
+
+    this.ruleForm.get('targetField')?.valueChanges.subscribe(() => {
+      const isSelect = this.isTargetSelect();
+      const actionCtrl = this.ruleForm.get('actionType');
+      const hideOptionsCtrl = this.ruleForm.get('hideOptionValues');
+      if (!isSelect && actionCtrl?.value === 'options') {
+        actionCtrl.setValue('validation');
+      }
+      if (isSelect) {
+        hideOptionsCtrl?.enable({ emitEvent: false });
+      } else {
+        hideOptionsCtrl?.disable({ emitEvent: false });
+        hideOptionsCtrl?.setValue([], { emitEvent: false });
+      }
+    });
   }
 
   ngOnInit() {
@@ -136,27 +164,10 @@ export class RulesStep implements OnInit {
     const formId = this.formsService.getCurrentFormId();
     const formName = this.formsService.getCurrentFormName();
     const fieldsData = this.formsService.getFormFields(formId, formName) || [];
-    const contextFields = this.getUserContextFields();
-
-    const merged = [
-      ...contextFields.filter(ctx => !fieldsData.some(f => f.name === ctx.name)),
-      ...(fieldsData as FormField[])
-    ];
-
-    this.contextFieldNames.set(new Set(contextFields.map(f => f.name)));
-    this.fields.set((merged as FormField[]) || []);
+    const ctx = this.formsService.getFormContext(formId) || [];
+    this.userContextEntriesSignal.set(ctx);
+    this.fields.set((fieldsData as FormField[]) || []);
     this.loadSelectOptions();
-  }
-
-  private getUserContextFields(): FormField[] {
-    const ctx = this.formsService.getFormContext(this.formsService.getCurrentFormId()) || [];
-    return ctx.map(entry => ({
-      label: entry.displayName || entry.key,
-      name: entry.key,
-      type: 'text',
-      required: true,
-      default: entry.value
-    }));
   }
 
   addCondition() {
@@ -191,6 +202,9 @@ export class RulesStep implements OnInit {
       return;
     }
 
+    const targetDef = this.fields().find((f) => f.name === targetField);
+    const targetType = targetDef?.type;
+
     let action: RuleAction;
     if (actionType === 'visibility') {
       action = {
@@ -198,20 +212,41 @@ export class RulesStep implements OnInit {
           formValue.visibilityBehavior === 'show' ? 'show-field' : 'hide-field',
         targetField,
       };
+    } else if (actionType === 'options') {
+      if (!this.isTargetSelect()) {
+        alert('Hide options is only available for select fields.');
+        return;
+      }
+      action = {
+        type: 'hide-options',
+        targetField,
+        options: formValue.hideOptionValues || [],
+      };
     } else {
+      const comparator = this.getComparatorForTarget(
+        targetDef,
+        formValue.comparator,
+      );
+      const staticValue =
+        formValue.thresholdType === 'static'
+          ? this.parseThresholdValue(formValue.thresholdValue, targetType)
+          : undefined;
+      const offset =
+        formValue.thresholdType === 'field' && targetType === 'number'
+          ? this.toNumber(formValue.thresholdOffset)
+          : undefined;
+
       action = {
         type: 'enforce-comparison',
         targetField,
-        comparator: (formValue.comparator as any) || '<=',
+        comparator,
         valueSource: (formValue.thresholdType as any) || 'static',
-        value:
-          formValue.thresholdType === 'static'
-            ? this.toNumber(formValue.thresholdValue)
-            : undefined,
+        value: staticValue,
         otherField:
           formValue.thresholdType === 'field'
             ? formValue.thresholdField || undefined
             : undefined,
+        offset,
         errorMessage: formValue.errorMessage || undefined,
       };
     }
@@ -219,9 +254,7 @@ export class RulesStep implements OnInit {
     if (actionType === 'validation' && action.type === 'enforce-comparison') {
       if (
         action.valueSource === 'static' &&
-        (action.value === null ||
-          action.value === undefined ||
-          Number.isNaN(action.value))
+        (action.value === null || action.value === undefined)
       ) {
         this.ruleForm.get('thresholdValue')?.setErrors({ required: true });
         return;
@@ -257,7 +290,11 @@ export class RulesStep implements OnInit {
       name: rule.name,
       targetField: rule.action.targetField,
       actionType:
-        rule.action.type === 'enforce-comparison' ? 'validation' : 'visibility',
+        rule.action.type === 'enforce-comparison'
+          ? 'validation'
+          : rule.action.type === 'hide-options'
+            ? 'options'
+            : 'visibility',
       comparator:
         rule.action.type === 'enforce-comparison'
           ? rule.action.comparator
@@ -276,6 +313,15 @@ export class RulesStep implements OnInit {
         rule.action.valueSource === 'field'
           ? (rule.action.otherField ?? '')
           : '',
+      thresholdOffset:
+        rule.action.type === 'enforce-comparison' &&
+        rule.action.valueSource === 'field'
+          ? rule.action.offset !== undefined && rule.action.offset !== null
+            ? String(rule.action.offset)
+            : ''
+          : '',
+      hideOptionValues:
+        rule.action.type === 'hide-options' ? rule.action.options : [],
       errorMessage:
         rule.action.type === 'enforce-comparison'
           ? rule.action.errorMessage || ''
@@ -309,6 +355,11 @@ export class RulesStep implements OnInit {
       return `${conditions} -> ${this.getFieldLabel(rule.action.targetField)} must be ${rule.action.comparator} ${right}`;
     }
 
+    if (rule.action.type === 'hide-options') {
+      const opts = (rule.action.options || []).join(', ');
+      return `${conditions} -> Hide options [${opts}] from ${this.getFieldLabel(rule.action.targetField)}`;
+    }
+
     const visibilityAction =
       rule.action.type === 'show-field' ? 'Show' : 'Hide';
     return `${conditions} -> ${visibilityAction} ${this.getFieldLabel(rule.action.targetField)}`;
@@ -333,6 +384,57 @@ export class RulesStep implements OnInit {
 
   isValidationAction(): boolean {
     return this.ruleForm.value.actionType === 'validation';
+  }
+
+  getComparatorOptions() {
+    const targetType = this.getTargetField()?.type;
+    if (targetType === 'number' || targetType === 'date') {
+      return this.numericComparators;
+    }
+    return this.textComparators;
+  }
+
+  isTargetSelect(): boolean {
+    return this.getTargetField()?.type === 'select';
+  }
+
+  userDataFields(): FormField[] {
+    return [];
+  }
+
+  formFieldsList(): FormField[] {
+    return this.fields().filter((f) => f.type === 'select');
+  }
+
+  getOptionLabel(optValue: any): string {
+    const match = this.getStaticValueOptionsForTarget().find(
+      (o) => String(o.value) === String(optValue),
+    );
+    return match?.label || String(optValue);
+  }
+
+  userContextEntries() {
+    return this.userContextEntriesSignal();
+  }
+
+  getTargetField(): FormField | undefined {
+    const target = this.ruleForm.value.targetField;
+    return this.fields().find((f) => f.name === target);
+  }
+
+  getStaticValueOptionsForTarget(): { label: string; value: any }[] {
+    const target = this.getTargetField();
+    if (target?.type === 'select') {
+      const opts = this.selectOptions()[target.name] || [];
+      if (opts.length) return opts;
+      return (target.options || []).map((o) => ({ label: o, value: o }));
+    }
+    return [];
+  }
+
+  isTargetNumericOrDate(): boolean {
+    const t = this.getTargetField()?.type;
+    return t === 'number' || t === 'date';
   }
 
   resetForms(keepTargetField?: string) {
@@ -455,5 +557,19 @@ export class RulesStep implements OnInit {
     const value = field.apiOptions.saveStrategy === 'label' ? label : rawValue;
     if (label === undefined || value === undefined) return null;
     return { label: String(label), value };
+  }
+
+  private parseThresholdValue(input: any, targetType?: string): any {
+    if (input === null || input === undefined || input === '') return undefined;
+    if (targetType === 'number') return this.toNumber(input);
+    return input;
+  }
+
+  private getComparatorForTarget(
+    target: FormField | undefined,
+    requested: any,
+  ): '<' | '<=' | '>' | '>=' | '==' | '!=' | 'contains' {
+    const allowed = this.getComparatorOptions().map((c) => c.value);
+    return (allowed.includes(requested) ? requested : allowed[0]) as any;
   }
 }

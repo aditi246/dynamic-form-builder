@@ -13,7 +13,7 @@
     
     <form [formGroup]="previewForm" class="space-y-6">
       @for (field of fields(); track field.name) {
-        @if (!isHidden(field.name)) {
+        @if (!isHidden(field.name) && !isContextField(field.name)) {
         <div>
           <label class="block text-sm font-medium text-text mb-2">
             {{ field.label }}

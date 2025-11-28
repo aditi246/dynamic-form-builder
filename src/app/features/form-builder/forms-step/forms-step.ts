@@ -1,7 +1,7 @@
 import { Component, output, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FormsManagementService } from '../../../shared/services/forms-management.service';
+import { FormsManagementService, SavedForm } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 
 @Component({
@@ -17,7 +17,9 @@ export class FormsStep implements OnInit {
 
   showCreateModal = signal<boolean>(false);
   createFormGroup = new FormGroup({
-    name: new FormControl('', [Validators.required, Validators.minLength(1)])
+    name: new FormControl('', [Validators.required, Validators.minLength(1)]),
+    provideContext: new FormControl(false),
+    userContextJson: new FormControl('')
   });
 
   constructor(public formsService: FormsManagementService) {}
@@ -29,23 +31,50 @@ export class FormsStep implements OnInit {
 
   openCreateModal() {
     this.showCreateModal.set(true);
-    this.createFormGroup.reset();
+    this.createFormGroup.reset({ provideContext: false, userContextJson: '' });
   }
 
   closeCreateModal() {
     this.showCreateModal.set(false);
-    this.createFormGroup.reset();
+    this.createFormGroup.reset({ provideContext: false, userContextJson: '' });
   }
 
   createForm() {
     if (this.createFormGroup.valid) {
       const formName = this.createFormGroup.get('name')?.value || 'Untitled Form';
-      const formId = this.formsService.createForm(formName);
+      const provideContext = !!this.createFormGroup.get('provideContext')?.value;
+      const rawContext = this.createFormGroup.get('userContextJson')?.value || '';
+      const parsedContext = provideContext ? this.parseUserContext(rawContext) : null;
+      if (provideContext && !parsedContext) {
+        alert('Please enter a valid JSON array of { key, displayName, value } entries.');
+        return;
+      }
+      const formId = this.formsService.createForm(formName, parsedContext || undefined);
       this.closeCreateModal();
       // Navigate to builder with the new form
       this.formSelected.emit(formId);
     } else {
       this.createFormGroup.markAllAsTouched();
+    }
+  }
+
+  private parseUserContext(raw: string): SavedForm['userContext'] | null {
+    if (!raw || !raw.trim()) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return null;
+      }
+      const normalized = parsed
+        .filter((entry: any) => entry && entry.key && entry.displayName && entry.value)
+        .map((entry: any) => ({
+          key: String(entry.key),
+          displayName: String(entry.displayName),
+          value: String(entry.value)
+        }));
+      return normalized.length > 0 ? normalized : null;
+    } catch {
+      return null;
     }
   }
 

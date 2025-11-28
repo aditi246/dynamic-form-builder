@@ -5,6 +5,7 @@ import { StorageService } from '../../../shared/services/storage.service';
 import { FormsManagementService } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { DefaultsComponent } from '../../../components/defaults/defaults';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 export interface FormField {
   label: string;
@@ -12,6 +13,16 @@ export interface FormField {
   type: string;
   required: boolean;
   options?: string[];
+  selectSource?: 'manual' | 'api';
+  apiOptions?: {
+    url: string;
+    method: 'GET';
+    itemsPath?: string;
+    labelField?: string;
+    valueField?: string;
+    saveStrategy?: 'label' | 'value';
+    headers?: Record<string, string>;
+  };
   default?: string | number | boolean | null;
   validation?: {
     minLength?: number;
@@ -28,7 +39,7 @@ export interface FormField {
 @Component({
   selector: 'app-fields-step',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, IconComponent, DefaultsComponent],
+  imports: [ReactiveFormsModule, CommonModule, IconComponent, DefaultsComponent, HttpClientModule],
   templateUrl: './fields-step.html',
 })
 export class FieldsStep {
@@ -49,6 +60,12 @@ export class FieldsStep {
     required: new FormControl(false),
     default: new FormControl<string | number | boolean | null>(''),
     options: new FormControl(''),
+    selectSource: new FormControl<'manual' | 'api'>('manual'),
+    apiUrl: new FormControl(''),
+    apiItemsPath: new FormControl(''),
+    apiLabelField: new FormControl(''),
+    apiValueField: new FormControl(''),
+    apiSaveStrategy: new FormControl<'label' | 'value'>('value'),
     min: new FormControl(''),
     max: new FormControl(''),
     step: new FormControl(''),
@@ -71,9 +88,14 @@ export class FieldsStep {
 
   currentType = signal<string>(this.fieldForm.get('type')?.value || 'text');
 
+  apiPreviewOptions = signal<{ label: string; value: any }[]>([]);
+  apiPreviewLoading = signal<boolean>(false);
+  apiPreviewError = signal<string | null>(null);
+
   constructor(
     private storageService: StorageService,
-    private formsService: FormsManagementService
+    private formsService: FormsManagementService,
+    private http: HttpClient
   ) {
     effect(() => {
       const formId = this.formsService.getCurrentFormId();
@@ -185,6 +207,11 @@ export class FieldsStep {
   }
 
   getOptionsArray(): string[] {
+    if (this.currentType() === 'select' && this.fieldForm.value.selectSource === 'api') {
+      const saveStrategy = this.fieldForm.value.apiSaveStrategy || 'value';
+      const apiOpts = this.apiPreviewOptions();
+      return apiOpts.map(opt => (saveStrategy === 'label' ? opt.label : String(opt.value)));
+    }
     const optionsValue = this.fieldForm.get('options')?.value || '';
     if (!optionsValue) return [];
     return this.parseQuotedOptions(optionsValue);
@@ -298,12 +325,26 @@ export class FieldsStep {
       const maxValue = this.toNumberValue(value.max);
       const step = this.toNumberValue(value.step);
 
+      const selectSource = (value.selectSource as 'manual' | 'api') || 'manual';
+
       const fieldData: FormField = {
         label: value.label!,
         name: value.name!,
         type: value.type || 'text',
         required: value.required || false,
-        options: value.type === 'select' ? options : undefined,
+        selectSource: value.type === 'select' ? selectSource : undefined,
+        options: value.type === 'select' && selectSource === 'manual' ? options : undefined,
+        apiOptions:
+          value.type === 'select' && selectSource === 'api'
+            ? {
+                url: value.apiUrl || '',
+                method: 'GET',
+                itemsPath: value.apiItemsPath || '',
+                labelField: value.apiLabelField || '',
+                valueField: value.apiValueField || '',
+                saveStrategy: value.apiSaveStrategy || 'value',
+              }
+            : undefined,
         default:
           value.type === 'checkbox'
             ? Boolean(value.default)
@@ -364,6 +405,12 @@ export class FieldsStep {
       default: defaultValue as any,
       // Convert options array back to double-quoted format for editing
       options: field.options?.map((opt) => `"${opt}"`).join(' ') || '',
+      selectSource: field.selectSource || 'manual',
+      apiUrl: field.apiOptions?.url || '',
+      apiItemsPath: field.apiOptions?.itemsPath || '',
+      apiLabelField: field.apiOptions?.labelField || '',
+      apiValueField: field.apiOptions?.valueField || '',
+      apiSaveStrategy: field.apiOptions?.saveStrategy || 'value',
       min:
         field.type === 'text'
           ? field.validation?.minLength?.toString() || ''
@@ -389,9 +436,75 @@ export class FieldsStep {
       required: false,
       default: '',
       options: '',
+      selectSource: 'manual',
+      apiSaveStrategy: 'value',
       regexType: 'predefined',
     });
     this.editingIndex.set(null);
+    this.apiPreviewOptions.set([]);
+    this.apiPreviewLoading.set(false);
+    this.apiPreviewError.set(null);
+  }
+
+  fetchApiPreview() {
+    if (this.fieldForm.value.selectSource !== 'api') return;
+    const url = this.fieldForm.value.apiUrl;
+    if (!url) {
+      this.apiPreviewError.set('API URL is required');
+      return;
+    }
+
+    this.apiPreviewLoading.set(true);
+    this.apiPreviewError.set(null);
+
+    this.http.get(url).subscribe({
+      next: (res: any) => {
+        const list = this.extractItems(res, this.fieldForm.value.apiItemsPath || '');
+        const mapped = Array.isArray(list)
+          ? list
+              .map(item => this.mapOption(item))
+              .filter((x): x is { label: string; value: any } => !!x)
+          : [];
+        if (!mapped.length) {
+          this.apiPreviewError.set('No options returned from API');
+        }
+        this.apiPreviewOptions.set(mapped);
+        this.apiPreviewLoading.set(false);
+      },
+      error: () => {
+        this.apiPreviewError.set('Failed to load options');
+        this.apiPreviewLoading.set(false);
+      }
+    });
+  }
+
+  private extractItems(res: any, path?: string) {
+    if (!path) return res;
+    const segments = path.split('.').filter(Boolean);
+    let current: any = res;
+    for (const seg of segments) {
+      if (current && typeof current === 'object' && seg in current) {
+        current = current[seg];
+      } else {
+        return [];
+      }
+    }
+    return current;
+  }
+
+  private mapOption(item: any): { label: string; value: any } | null {
+    const labelKey = this.fieldForm.value.apiLabelField;
+    const valueKey = this.fieldForm.value.apiValueField;
+    const saveStrategy = this.fieldForm.value.apiSaveStrategy || 'value';
+    const label = labelKey ? item?.[labelKey] : item;
+    const rawValue = valueKey ? item?.[valueKey] : item;
+    const value = saveStrategy === 'label' ? label : rawValue;
+    if (label === undefined || value === undefined) return null;
+    return { label: String(label), value };
+  }
+
+  apiPreviewOptionsSaveValue(opt: { label: string; value: any }): string {
+    return String(opt.value);
   }
 
   private saveFields(): void {

@@ -26,6 +26,7 @@ export class PreviewStep implements OnInit {
   selectOptions = signal<Record<string, { label: string; value: any }[]>>({});
   loadingOptions = signal<Record<string, boolean>>({});
   optionErrors = signal<Record<string, string>>({});
+  hiddenOptionValues = signal<Record<string, Set<string>>>({});
   contextFieldNames = signal<Set<string>>(new Set());
   isContextField = (name: string) => this.contextFieldNames().has(name);
 
@@ -174,6 +175,7 @@ export class PreviewStep implements OnInit {
     );
 
     this.hiddenFields.set(evaluation.hiddenFields);
+    this.hiddenOptionValues.set(evaluation.optionHides);
 
     this.fields().forEach(field => {
       const control = this.getFieldControl(field.name);
@@ -244,11 +246,16 @@ export class PreviewStep implements OnInit {
 
   getOptionsForField(field: FormField): { label: string; value: any }[] {
     if (field.type !== 'select') return [];
+    const hiddenSet = this.hiddenOptionValues()[field.name] || new Set<string>();
     if (field.selectSource === 'api') {
       const loaded = this.selectOptions()[field.name];
-      if (loaded && loaded.length) return loaded;
+      if (loaded && loaded.length) {
+        return loaded.filter(opt => !hiddenSet.has(String(opt.value)));
+      }
     }
-    return (field.options || []).map(opt => ({ label: opt, value: opt }));
+    return (field.options || [])
+      .map(opt => ({ label: opt, value: opt }))
+      .filter(opt => !hiddenSet.has(String(opt.value)));
   }
 
   isOptionsLoading(fieldName: string): boolean {

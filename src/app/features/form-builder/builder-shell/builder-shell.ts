@@ -9,12 +9,14 @@ import { FormsManagementService } from '../../../shared/services/forms-managemen
   selector: 'app-builder-shell',
   standalone: true,
   imports: [FormsStep, FieldsStep, RulesStep, PreviewStep],
-  templateUrl: './builder-shell.html'
+  templateUrl: './builder-shell.html',
 })
 export class BuilderShell {
   currentStep = signal<'forms' | 'fields' | 'rules' | 'preview'>('forms');
   formEngaged = signal<boolean>(false);
-  hasActiveForm = computed(() => this.formEngaged() && !!this.formsService.currentFormId());
+  hasActiveForm = computed(
+    () => this.formEngaged() && !!this.formsService.currentFormId(),
+  );
 
   constructor(public formsService: FormsManagementService) {
     effect(() => {

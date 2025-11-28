@@ -144,26 +144,31 @@ export const MOCK_RULES = [
       valueSource: 'static',
       value: 'Divorced',
       errorMessage:
-        "Value must satisfy the rule: status cannot be divorced when user is admin and location is India",
+        'Value must satisfy the rule: status cannot be divorced when user is admin and location is India',
     },
   },
   {
     id: 'rule-lbsooehu',
     name: 'If office location is india, employee should be greater than 30',
-    conditions: [{ field: 'officeLocation', operator: 'equals', value: 'India' }],
+    conditions: [
+      { field: 'officeLocation', operator: 'equals', value: 'India' },
+    ],
     action: {
       type: 'enforce-comparison',
       targetField: 'officeEmployees',
       comparator: '>',
       valueSource: 'static',
       value: 30,
-      errorMessage: 'If office location is india, employee should be greater than 30',
+      errorMessage:
+        'If office location is india, employee should be greater than 30',
     },
   },
   {
     id: 'rule-svttlvj5',
     name: 'Office location is india, status should not show single',
-    conditions: [{ field: 'officeLocation', operator: 'equals', value: 'India' }],
+    conditions: [
+      { field: 'officeLocation', operator: 'equals', value: 'India' },
+    ],
     action: {
       type: 'enforce-comparison',
       targetField: 'status',
@@ -176,7 +181,9 @@ export const MOCK_RULES = [
   {
     id: 'rule-wy4140g4',
     name: 'Office Location is Pakistan, status field should not be visible',
-    conditions: [{ field: 'officeLocation', operator: 'equals', value: 'Pakistan' }],
+    conditions: [
+      { field: 'officeLocation', operator: 'equals', value: 'Pakistan' },
+    ],
     action: {
       type: 'hide-field',
       targetField: 'status',
@@ -193,13 +200,18 @@ export const MOCK_RULES = [
       valueSource: 'field',
       otherField: 'comlianceScore',
       offset: -10,
-      errorMessage: 'Audit Score must be greater than ( Compliance score - 10 )',
+      errorMessage:
+        'Audit Score must be greater than ( Compliance score - 10 )',
     },
   },
   {
     id: 'rule-dzcguzds',
     name: 'Custom rule',
     conditions: [{ field: '1', operator: 'equals', value: 'Admin' }],
-    action: { type: 'hide-options', targetField: 'status', options: ['Single'] },
+    action: {
+      type: 'hide-options',
+      targetField: 'status',
+      options: ['Single'],
+    },
   },
 ];

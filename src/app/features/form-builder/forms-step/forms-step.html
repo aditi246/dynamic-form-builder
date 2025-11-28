@@ -2,22 +2,22 @@
   <div class="flex items-center justify-between">
     <div>
       <h2 class="text-2xl font-semibold text-text mb-2">Forms</h2>
-      <p class="text-muted">
-        Create and manage your forms.
-      </p>
+      <p class="text-muted">Create and manage your forms.</p>
     </div>
     <div class="flex items-center gap-3">
-      <button 
+      <button
         type="button"
         (click)="loadMockForm()"
-        class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium flex items-center gap-2">
+        class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium flex items-center gap-2"
+      >
         <app-icon name="sparkle" class="w-5 h-5"></app-icon>
         Load Mock Form
       </button>
-      <button 
+      <button
         type="button"
         (click)="openCreateModal()"
-        class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium flex items-center gap-2">
+        class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium flex items-center gap-2"
+      >
         <app-icon name="plus" class="w-5 h-5"></app-icon>
         Create New Form
       </button>
@@ -26,166 +26,235 @@
 
   <!-- Forms List -->
   @if (formsService.forms().length === 0) {
-    <div class="bg-card rounded-md shadow-sm p-6 border border-border">
-      <div class="text-center py-12">
-        <p class="text-muted mb-4">No forms saved yet. Create your first form to get started.</p>
-        <button 
-          type="button"
-          (click)="openCreateModal()"
-          class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium">
-          Create Form
-        </button>
-      </div>
+  <div class="bg-card rounded-md shadow-sm p-6 border border-border">
+    <div class="text-center py-12">
+      <p class="text-muted mb-4">
+        No forms saved yet. Create your first form to get started.
+      </p>
+      <button
+        type="button"
+        (click)="openCreateModal()"
+        class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium"
+      >
+        Create Form
+      </button>
     </div>
+  </div>
   } @else {
-    <div class="bg-card rounded-md shadow-sm border border-border overflow-hidden">
-      <table class="w-full">
-        <thead class="bg-bg border-b border-border">
-          <tr>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-text uppercase tracking-wider">Form Name</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-text uppercase tracking-wider">Last Updated</th>
-            <th class="px-6 py-3 text-right text-xs font-semibold text-text uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-border">
-          @for (form of formsService.forms(); track form.id) {
-            <tr 
-              (click)="selectForm(form.id)"
-              class="hover:bg-bg cursor-pointer transition-colors">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-text">{{ form.name }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-muted">{{ formatDate(form.updatedAt) }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium cursor-default" (click)="$event.stopPropagation()">
-                <div class="flex items-center justify-end gap-3 cursor-default">
-                  <button 
-                    type="button"
-                    (click)="copyForm($event, form.id)"
-                    class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
-                    title="Copy form">
-                    <app-icon name="copy" class="w-4 h-4"></app-icon>
-                  </button>
-                <button 
-                  type="button"
-                  (click)="openContextModal(form, $event)"
-                  class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
-                  title="Update user data">
-                  <app-icon name="user" class="w-4 h-4"></app-icon>
-                </button>
-                <button 
-                  type="button"
-                  (click)="editForm($event, form.id)"
-                  class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
-                    title="Edit form">
-                    <app-icon name="edit" class="w-4 h-4"></app-icon>
-                  </button>
-                  <button 
-                    type="button"
-                    (click)="deleteForm($event, form.id)"
-                    class="p-1 text-muted hover:text-danger transition-colors cursor-pointer"
-                    title="Delete form">
-                    <app-icon name="delete" class="w-4 h-4"></app-icon>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+  <div
+    class="bg-card rounded-md shadow-sm border border-border overflow-hidden"
+  >
+    <table class="w-full">
+      <thead class="bg-bg border-b border-border">
+        <tr>
+          <th
+            class="px-6 py-3 text-left text-xs font-semibold text-text uppercase tracking-wider"
+          >
+            Form Name
+          </th>
+          <th
+            class="px-6 py-3 text-left text-xs font-semibold text-text uppercase tracking-wider"
+          >
+            Last Updated
+          </th>
+          <th
+            class="px-6 py-3 text-right text-xs font-semibold text-text uppercase tracking-wider"
+          >
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-border">
+        @for (form of formsService.forms(); track form.id) {
+        <tr
+          (click)="selectForm(form.id)"
+          class="hover:bg-bg cursor-pointer transition-colors"
+        >
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm font-medium text-text">{{ form.name }}</div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm text-muted">
+              {{ formatDate(form.updatedAt) }}
+            </div>
+          </td>
+          <td
+            class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium cursor-default"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="flex items-center justify-end gap-3 cursor-default">
+              <button
+                type="button"
+                (click)="copyForm($event, form.id)"
+                class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
+                title="Copy form"
+              >
+                <app-icon name="copy" class="w-4 h-4"></app-icon>
+              </button>
+              <button
+                type="button"
+                (click)="openContextModal(form, $event)"
+                class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
+                title="Update user data"
+              >
+                <app-icon name="user" class="w-4 h-4"></app-icon>
+              </button>
+              <button
+                type="button"
+                (click)="editForm($event, form.id)"
+                class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
+                title="Edit form"
+              >
+                <app-icon name="edit" class="w-4 h-4"></app-icon>
+              </button>
+              <button
+                type="button"
+                (click)="deleteForm($event, form.id)"
+                class="p-1 text-muted hover:text-danger transition-colors cursor-pointer"
+                title="Delete form"
+              >
+                <app-icon name="delete" class="w-4 h-4"></app-icon>
+              </button>
+            </div>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
   }
 
   <!-- Create Form Modal -->
   @if (showCreateModal()) {
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" (click)="closeCreateModal()">
-      <div class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border" (click)="$event.stopPropagation()">
-        <h3 class="text-xl font-semibold text-text mb-4">Create New Form</h3>
-        <form [formGroup]="createFormGroup" (ngSubmit)="createForm()" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-text mb-2">Form Name</label>
-            <input
-              type="text"
-              formControlName="name"
-              placeholder="Enter form name"
-              class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-              [class.border-danger]="createFormGroup.get('name')?.invalid && createFormGroup.get('name')?.touched">
-            @if (createFormGroup.get('name')?.invalid && createFormGroup.get('name')?.touched) {
-              <p class="text-sm text-danger mt-1">Form name is required</p>
-            }
-          </div>
-          <div class="flex items-start gap-3">
-            <input
-              type="checkbox"
-              formControlName="provideContext"
-              id="provideContext"
-              class="mt-1 w-4 h-4 text-primary border-border rounded"
-            />
-            <div class="flex flex-col">
-              <label for="provideContext" class="text-sm font-medium text-text">Do you want to provide input data?</label>
-              <p class="text-xs text-muted">If yes, paste a JSON array of key/displayName/value entries (e.g., user type, location, gender). If no, we'll use an empty context.</p>
-            </div>
-          </div>
-          @if (createFormGroup.get('provideContext')?.value) {
-            <div>
-              <label class="block text-sm font-medium text-text mb-2">Context JSON</label>
-              <textarea
-                formControlName="userContextJson"
-                rows="4"
-                placeholder='[{"key":"1","displayName":"User Type","value":"Admin"},{"key":"2","displayName":"Location","value":"India"}]'
-                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
-              ></textarea>
-              <p class="text-xs text-muted mt-1">Example: [{{ '{' }}"key":"1","displayName":"User Type","value":"Admin"{{ '}' }}, {{ '{' }}"key":"2","displayName":"Location","value":"India"{{ '}' }}]</p>
-            </div>
+  <div
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    (click)="closeCreateModal()"
+  >
+    <div
+      class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border"
+      (click)="$event.stopPropagation()"
+    >
+      <h3 class="text-xl font-semibold text-text mb-4">Create New Form</h3>
+      <form
+        [formGroup]="createFormGroup"
+        (ngSubmit)="createForm()"
+        class="space-y-4"
+      >
+        <div>
+          <label class="block text-sm font-medium text-text mb-2"
+            >Form Name</label
+          >
+          <input
+            type="text"
+            formControlName="name"
+            placeholder="Enter form name"
+            class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+            [class.border-danger]="createFormGroup.get('name')?.invalid && createFormGroup.get('name')?.touched"
+          />
+          @if (createFormGroup.get('name')?.invalid &&
+          createFormGroup.get('name')?.touched) {
+          <p class="text-sm text-danger mt-1">Form name is required</p>
           }
-          <div class="flex justify-end gap-3">
-            <button 
-              type="button"
-              (click)="closeCreateModal()"
-              class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium">
-              Cancel
-            </button>
-            <button 
-              type="submit"
-              class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium">
-              Create
-            </button>
+        </div>
+        <div class="flex items-start gap-3">
+          <input
+            type="checkbox"
+            formControlName="provideContext"
+            id="provideContext"
+            class="mt-1 w-4 h-4 text-primary border-border rounded"
+          />
+          <div class="flex flex-col">
+            <label for="provideContext" class="text-sm font-medium text-text"
+              >Do you want to provide input data?</label
+            >
+            <p class="text-xs text-muted">
+              If yes, paste a JSON array of key/displayName/value entries (e.g.,
+              user type, location, gender). If no, we'll use an empty context.
+            </p>
           </div>
-        </form>
-      </div>
+        </div>
+        @if (createFormGroup.get('provideContext')?.value) {
+        <div>
+          <label class="block text-sm font-medium text-text mb-2"
+            >Context JSON</label
+          >
+          <textarea
+            formControlName="userContextJson"
+            rows="4"
+            placeholder='[{"key":"1","displayName":"User Type","value":"Admin"},{"key":"2","displayName":"Location","value":"India"}]'
+            class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
+          ></textarea>
+          <p class="text-xs text-muted mt-1">
+            Example: [{{ '{' }}"key":"1","displayName":"User
+            Type","value":"Admin"{{ '}' }}, {{ '{'
+            }}"key":"2","displayName":"Location","value":"India"{{ '}' }}]
+          </p>
+        </div>
+        }
+        <div class="flex justify-end gap-3">
+          <button
+            type="button"
+            (click)="closeCreateModal()"
+            class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium"
+          >
+            Create
+          </button>
+        </div>
+      </form>
     </div>
-  }
-
-  @if (showContextModal()) {
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" (click)="closeContextModal()">
-      <div class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border" (click)="$event.stopPropagation()">
-        <h3 class="text-xl font-semibold text-text mb-4">Update user data</h3>
-        <p class="text-xs text-muted mb-3">Enter JSON array of {{ '{' }} key, displayName, value {{ '}' }}. Existing values are prefilled.</p>
-        <form [formGroup]="contextEditForm" (ngSubmit)="updateUserContext()" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-text mb-2">Context JSON</label>
-            <textarea
-              formControlName="userContextJson"
-              rows="6"
-              class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
-            ></textarea>
-          </div>
-          <div class="flex justify-end gap-3">
-            <button 
-              type="button"
-              (click)="closeContextModal()"
-              class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium">
-              Cancel
-            </button>
-            <button 
-              type="submit"
-              class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium">
-              Save
-            </button>
-          </div>
-        </form>
-      </div>
+  </div>
+  } @if (showContextModal()) {
+  <div
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    (click)="closeContextModal()"
+  >
+    <div
+      class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border"
+      (click)="$event.stopPropagation()"
+    >
+      <h3 class="text-xl font-semibold text-text mb-4">Update user data</h3>
+      <p class="text-xs text-muted mb-3">
+        Enter JSON array of {{ '{' }} key, displayName, value {{ '}' }}.
+        Existing values are prefilled.
+      </p>
+      <form
+        [formGroup]="contextEditForm"
+        (ngSubmit)="updateUserContext()"
+        class="space-y-4"
+      >
+        <div>
+          <label class="block text-sm font-medium text-text mb-2"
+            >Context JSON</label
+          >
+          <textarea
+            formControlName="userContextJson"
+            rows="6"
+            class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
+          ></textarea>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button
+            type="button"
+            (click)="closeContextModal()"
+            class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium"
+          >
+            Save
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
   }
 </div>

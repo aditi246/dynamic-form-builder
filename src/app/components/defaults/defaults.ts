@@ -6,13 +6,13 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
   selector: 'app-defaults',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: './defaults.html'
+  templateUrl: './defaults.html',
 })
 export class DefaultsComponent {
   type = input.required<string>();
   options = input<string[]>([]);
   control = input<FormControl | null>(null);
-  
+
   checkboxValue = signal<boolean | null>(null);
 
   constructor() {
@@ -20,10 +20,12 @@ export class DefaultsComponent {
     effect(() => {
       const ctrl = this.control();
       const fieldType = this.type();
-      
+
       if (ctrl && fieldType === 'checkbox') {
         const value = ctrl.value;
-        this.checkboxValue.set(value === true || value === 'true' || value === 1);
+        this.checkboxValue.set(
+          value === true || value === 'true' || value === 1,
+        );
       }
     });
   }
@@ -63,7 +65,7 @@ export class DefaultsComponent {
     if (ctrl) {
       if (this.type() === 'number') {
         const numValue = value === '' ? null : Number(value);
-        ctrl.setValue(!numValue? null : numValue);
+        ctrl.setValue(!numValue ? null : numValue);
       } else {
         ctrl.setValue(value);
       }
@@ -77,4 +79,3 @@ export class DefaultsComponent {
     }
   }
 }
-

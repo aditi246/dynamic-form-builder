@@ -1,7 +1,15 @@
 import { Component, output, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FormsManagementService, SavedForm } from '../../../shared/services/forms-management.service';
+import {
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import {
+  FormsManagementService,
+  SavedForm,
+} from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { StorageService } from '../../../shared/services/storage.service';
 import { MOCK_FORM_ID, MOCK_FORMLIST, MOCK_RULES } from './mock-form.data';
@@ -33,7 +41,7 @@ export class FormsStep implements OnInit {
 
   constructor(
     public formsService: FormsManagementService,
-    private storageService: StorageService
+    private storageService: StorageService,
   ) {}
 
   ngOnInit() {
@@ -69,15 +77,25 @@ export class FormsStep implements OnInit {
 
   createForm() {
     if (this.createFormGroup.valid) {
-      const formName = this.createFormGroup.get('name')?.value || 'Untitled Form';
-      const provideContext = !!this.createFormGroup.get('provideContext')?.value;
-      const rawContext = this.createFormGroup.get('userContextJson')?.value || '';
-      const parsedContext = provideContext ? this.parseUserContext(rawContext) : null;
+      const formName =
+        this.createFormGroup.get('name')?.value || 'Untitled Form';
+      const provideContext =
+        !!this.createFormGroup.get('provideContext')?.value;
+      const rawContext =
+        this.createFormGroup.get('userContextJson')?.value || '';
+      const parsedContext = provideContext
+        ? this.parseUserContext(rawContext)
+        : null;
       if (provideContext && !parsedContext) {
-        alert('Please enter a valid JSON array of { key, displayName, value } entries.');
+        alert(
+          'Please enter a valid JSON array of { key, displayName, value } entries.',
+        );
         return;
       }
-      const formId = this.formsService.createForm(formName, parsedContext || undefined);
+      const formId = this.formsService.createForm(
+        formName,
+        parsedContext || undefined,
+      );
       this.closeCreateModal();
       this.formSelected.emit(formId);
     } else {
@@ -91,7 +109,9 @@ export class FormsStep implements OnInit {
     const rawContext = this.contextEditForm.get('userContextJson')?.value || '';
     const parsed = this.parseUserContext(rawContext);
     if (rawContext.trim() && !parsed) {
-      alert('Please enter a valid JSON array of { key, displayName, value } entries.');
+      alert(
+        'Please enter a valid JSON array of { key, displayName, value } entries.',
+      );
       return;
     }
     this.formsService.updateForm(formId, { userContext: parsed || [] });
@@ -142,7 +162,10 @@ export class FormsStep implements OnInit {
 
   loadMockForm() {
     this.storageService.setItem('formlist', MOCK_FORMLIST);
-    this.storageService.setItem(`form-builder-rules-${MOCK_FORM_ID}`, MOCK_RULES);
+    this.storageService.setItem(
+      `form-builder-rules-${MOCK_FORM_ID}`,
+      MOCK_RULES,
+    );
     this.formsService.loadForms();
   }
 
@@ -154,7 +177,10 @@ export class FormsStep implements OnInit {
         return null;
       }
       const normalized = parsed
-        .filter((entry: any) => entry && entry.key && entry.displayName && entry.value)
+        .filter(
+          (entry: any) =>
+            entry && entry.key && entry.displayName && entry.value,
+        )
         .map((entry: any) => ({
           key: String(entry.key),
           displayName: String(entry.displayName),

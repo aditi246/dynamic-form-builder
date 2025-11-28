@@ -1,4 +1,11 @@
-import { Component, output, OnInit, OnDestroy, signal, effect } from '@angular/core';
+import {
+  Component,
+  output,
+  OnInit,
+  OnDestroy,
+  signal,
+  effect,
+} from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -7,12 +14,15 @@ import {
   ValidationErrors,
   ValidatorFn,
   Validators,
-  FormsModule
+  FormsModule,
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { FormField } from '../fields-step/fields-step';
 import { Subscription } from 'rxjs';
-import { FormsManagementService, SavedForm } from '../../../shared/services/forms-management.service';
+import {
+  FormsManagementService,
+  SavedForm,
+} from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { AudioTextareaComponent } from '../../../components/audio-textarea/audio-textarea';
 import { FileInputComponent } from '../../../components/input-file/input-file';
@@ -30,8 +40,16 @@ interface FilePreviewEntry {
 @Component({
   selector: 'app-preview-step',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, FormsModule, IconComponent, AudioTextareaComponent, HttpClientModule, FileInputComponent],
-  templateUrl: './preview-step.html'
+  imports: [
+    ReactiveFormsModule,
+    CommonModule,
+    FormsModule,
+    IconComponent,
+    AudioTextareaComponent,
+    HttpClientModule,
+    FileInputComponent,
+  ],
+  templateUrl: './preview-step.html',
 })
 export class PreviewStep implements OnInit, OnDestroy {
   nextStep = output<Record<string, any>>();
@@ -57,7 +75,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     private rulesEngineService: RulesEngineService,
     private formsService: FormsManagementService,
     private openAiService: OpenAiService,
-    private http: HttpClient
+    private http: HttpClient,
   ) {
     effect(() => {
       this.formsService.forms(); // react to field updates
@@ -72,7 +90,10 @@ export class PreviewStep implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.loadFields(this.formsService.getCurrentFormId(), this.formsService.getCurrentFormName());
+    this.loadFields(
+      this.formsService.getCurrentFormId(),
+      this.formsService.getCurrentFormName(),
+    );
   }
 
   ngOnDestroy() {
@@ -83,12 +104,14 @@ export class PreviewStep implements OnInit, OnDestroy {
     const fieldsData = this.formsService.getFormFields(formId, formName) || [];
     const contextFields = this.getUserContextFields();
     const mergedFields: FormField[] = [
-      ...contextFields.filter(ctx => !fieldsData.some(f => f.name === ctx.name)),
-      ...(fieldsData as FormField[])
+      ...contextFields.filter(
+        (ctx) => !fieldsData.some((f) => f.name === ctx.name),
+      ),
+      ...(fieldsData as FormField[]),
     ];
 
     if (mergedFields && mergedFields.length > 0) {
-      this.contextFieldNames.set(new Set(contextFields.map(f => f.name)));
+      this.contextFieldNames.set(new Set(contextFields.map((f) => f.name)));
       this.filePreviews.set({});
       this.blurryWarnings.set({});
       this.analyzingImages.set({});
@@ -98,7 +121,9 @@ export class PreviewStep implements OnInit, OnDestroy {
       this.loadDynamicOptions();
       this.applyRules();
       this.valueChangesSub?.unsubscribe();
-      this.valueChangesSub = this.previewForm.valueChanges.subscribe(() => this.applyRules());
+      this.valueChangesSub = this.previewForm.valueChanges.subscribe(() =>
+        this.applyRules(),
+      );
     } else {
       this.resetPreview();
     }
@@ -118,30 +143,32 @@ export class PreviewStep implements OnInit, OnDestroy {
   }
 
   private getUserContextFields(): FormField[] {
-    const ctx = this.formsService.getFormContext(this.formsService.getCurrentFormId()) || [];
-    return ctx.map(entry => ({
+    const ctx =
+      this.formsService.getFormContext(this.formsService.getCurrentFormId()) ||
+      [];
+    return ctx.map((entry) => ({
       label: entry.displayName || entry.key,
       name: entry.key,
       type: 'text',
       required: true,
-      default: entry.value
+      default: entry.value,
     }));
   }
 
   private buildForm() {
     const group: { [key: string]: FormControl } = {};
-    const contextValues = this.formsService.getFormContext(
-      this.formsService.getCurrentFormId()
-    ) || [];
-    
-    this.fields().forEach(field => {
+    const contextValues =
+      this.formsService.getFormContext(this.formsService.getCurrentFormId()) ||
+      [];
+
+    this.fields().forEach((field) => {
       const validators: any[] = [];
-      
+
       // Required validator
       if (field.required) {
         validators.push(Validators.required);
       }
-      
+
       // Type-specific validators
       if (field.type === 'text' && field.validation) {
         if (field.validation.minLength !== undefined) {
@@ -154,7 +181,7 @@ export class PreviewStep implements OnInit, OnDestroy {
           validators.push(Validators.pattern(field.validation.pattern));
         }
       }
-      
+
       if (field.type === 'number' && field.validation) {
         if (field.validation.minValue !== undefined) {
           validators.push(Validators.min(field.validation.minValue));
@@ -163,22 +190,28 @@ export class PreviewStep implements OnInit, OnDestroy {
           validators.push(Validators.max(field.validation.maxValue));
         }
       }
-      
+
       if (field.type === 'email') {
         validators.push(Validators.email);
       }
-      
+
       if (field.type === 'file') {
         validators.push(this.buildFileValidator(field));
       }
-      
+
       // Set default value
       let defaultValue: any = '';
-      const ctxValue = contextValues.find(entry => entry.key === field.name)?.value;
+      const ctxValue = contextValues.find(
+        (entry) => entry.key === field.name,
+      )?.value;
 
       if (ctxValue !== undefined && ctxValue !== null) {
         defaultValue = ctxValue;
-      } else if (field.default !== undefined && field.default !== null && field.default !== '') {
+      } else if (
+        field.default !== undefined &&
+        field.default !== null &&
+        field.default !== ''
+      ) {
         defaultValue = field.default;
       } else {
         if (field.type === 'checkbox') {
@@ -189,32 +222,38 @@ export class PreviewStep implements OnInit, OnDestroy {
           defaultValue = [];
         }
       }
-      
-      group[field.name] = new FormControl(defaultValue, validators.length > 0 ? Validators.compose(validators) : null);
+
+      group[field.name] = new FormControl(
+        defaultValue,
+        validators.length > 0 ? Validators.compose(validators) : null,
+      );
     });
-    
+
     this.previewForm = new FormGroup(group);
   }
 
   private applyRules() {
-    const contextValues = this.formsService.getFormContext(
-      this.formsService.getCurrentFormId()
-    ) || [];
+    const contextValues =
+      this.formsService.getFormContext(this.formsService.getCurrentFormId()) ||
+      [];
     const evaluationValues = {
-      ...contextValues.reduce((acc, entry) => ({ ...acc, [entry.key]: entry.value }), {}),
-      ...this.previewForm.getRawValue()
+      ...contextValues.reduce(
+        (acc, entry) => ({ ...acc, [entry.key]: entry.value }),
+        {},
+      ),
+      ...this.previewForm.getRawValue(),
     };
 
     const evaluation = this.rulesEngineService.evaluate(
       this.formConfigService.rules(),
       evaluationValues,
-      this.fields()
+      this.fields(),
     );
 
     this.hiddenFields.set(evaluation.hiddenFields);
     this.hiddenOptionValues.set(evaluation.optionHides);
 
-    this.fields().forEach(field => {
+    this.fields().forEach((field) => {
       const control = this.getFieldControl(field.name);
       if (!control) return;
 
@@ -229,12 +268,17 @@ export class PreviewStep implements OnInit, OnDestroy {
 
       const existingErrors = control.errors || {};
       if (evaluation.fieldErrors[field.name]) {
-        control.setErrors({ ...existingErrors, rule: evaluation.fieldErrors[field.name] });
+        control.setErrors({
+          ...existingErrors,
+          rule: evaluation.fieldErrors[field.name],
+        });
       } else {
         if (existingErrors['rule']) {
           delete existingErrors['rule'];
         }
-        control.setErrors(Object.keys(existingErrors).length ? existingErrors : null);
+        control.setErrors(
+          Object.keys(existingErrors).length ? existingErrors : null,
+        );
       }
     });
   }
@@ -249,13 +293,15 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   isFieldInvalid(fieldName: string): boolean {
     const control = this.getFieldControl(fieldName);
-    return control ? (control.invalid && (control.dirty || control.touched)) : false;
+    return control
+      ? control.invalid && (control.dirty || control.touched)
+      : false;
   }
 
   getFieldError(fieldName: string): string {
     const control = this.getFieldControl(fieldName);
     if (!control || !control.errors) return '';
-    
+
     if (control.errors['required']) {
       return 'This field is required.';
     }
@@ -283,22 +329,23 @@ export class PreviewStep implements OnInit, OnDestroy {
     if (control.errors['rule']) {
       return control.errors['rule'];
     }
-    
+
     return '';
   }
 
   getOptionsForField(field: FormField): { label: string; value: any }[] {
     if (field.type !== 'select') return [];
-    const hiddenSet = this.hiddenOptionValues()[field.name] || new Set<string>();
+    const hiddenSet =
+      this.hiddenOptionValues()[field.name] || new Set<string>();
     if (field.selectSource === 'api') {
       const loaded = this.selectOptions()[field.name];
       if (loaded && loaded.length) {
-        return loaded.filter(opt => !hiddenSet.has(String(opt.value)));
+        return loaded.filter((opt) => !hiddenSet.has(String(opt.value)));
       }
     }
     return (field.options || [])
-      .map(opt => ({ label: opt, value: opt }))
-      .filter(opt => !hiddenSet.has(String(opt.value)));
+      .map((opt) => ({ label: opt, value: opt }))
+      .filter((opt) => !hiddenSet.has(String(opt.value)));
   }
 
   isOptionsLoading(fieldName: string): boolean {
@@ -317,14 +364,17 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   private loadDynamicOptions() {
     this.fields()
-      .filter(f => f.type === 'select' && f.selectSource === 'api' && f.apiOptions?.url)
-      .forEach(f => this.fetchOptions(f));
+      .filter(
+        (f) =>
+          f.type === 'select' && f.selectSource === 'api' && f.apiOptions?.url,
+      )
+      .forEach((f) => this.fetchOptions(f));
   }
 
   private fetchOptions(field: FormField) {
     if (!field.apiOptions?.url) return;
-    this.loadingOptions.update(map => ({ ...map, [field.name]: true }));
-    this.optionErrors.update(map => {
+    this.loadingOptions.update((map) => ({ ...map, [field.name]: true }));
+    this.optionErrors.update((map) => {
       const copy = { ...map };
       delete copy[field.name];
       return copy;
@@ -339,15 +389,21 @@ export class PreviewStep implements OnInit, OnDestroy {
               .filter((x): x is { label: string; value: any } => !!x)
           : [];
         if (!mapped.length) {
-          this.optionErrors.update(map => ({ ...map, [field.name]: 'No options returned from API' }));
+          this.optionErrors.update((map) => ({
+            ...map,
+            [field.name]: 'No options returned from API',
+          }));
         }
-        this.selectOptions.update(map => ({ ...map, [field.name]: mapped }));
-        this.loadingOptions.update(map => ({ ...map, [field.name]: false }));
+        this.selectOptions.update((map) => ({ ...map, [field.name]: mapped }));
+        this.loadingOptions.update((map) => ({ ...map, [field.name]: false }));
       },
       error: () => {
-        this.optionErrors.update(map => ({ ...map, [field.name]: 'Failed to load options' }));
-        this.loadingOptions.update(map => ({ ...map, [field.name]: false }));
-      }
+        this.optionErrors.update((map) => ({
+          ...map,
+          [field.name]: 'Failed to load options',
+        }));
+        this.loadingOptions.update((map) => ({ ...map, [field.name]: false }));
+      },
     });
   }
 
@@ -365,14 +421,18 @@ export class PreviewStep implements OnInit, OnDestroy {
     return current;
   }
 
-  private mapOption(item: any, field: FormField): { label: string; value: any } | null {
+  private mapOption(
+    item: any,
+    field: FormField,
+  ): { label: string; value: any } | null {
     if (!field.apiOptions) return null;
-    const label = field.apiOptions.labelField ? item?.[field.apiOptions.labelField] : item;
-    const rawValue = field.apiOptions.valueField ? item?.[field.apiOptions.valueField] : item;
-    const value =
-      field.apiOptions.saveStrategy === 'label'
-        ? label
-        : rawValue;
+    const label = field.apiOptions.labelField
+      ? item?.[field.apiOptions.labelField]
+      : item;
+    const rawValue = field.apiOptions.valueField
+      ? item?.[field.apiOptions.valueField]
+      : item;
+    const value = field.apiOptions.saveStrategy === 'label' ? label : rawValue;
     if (label === undefined || value === undefined) return null;
     return { label: String(label), value };
   }
@@ -386,11 +446,23 @@ export class PreviewStep implements OnInit, OnDestroy {
       if (field.required && count === 0) {
         errors.required = true;
       }
-      if (field.validation?.minFiles !== undefined && count < field.validation.minFiles) {
-        errors.minFiles = { minFiles: field.validation.minFiles, actual: count };
+      if (
+        field.validation?.minFiles !== undefined &&
+        count < field.validation.minFiles
+      ) {
+        errors.minFiles = {
+          minFiles: field.validation.minFiles,
+          actual: count,
+        };
       }
-      if (field.validation?.maxFiles !== undefined && count > field.validation.maxFiles) {
-        errors.maxFiles = { maxFiles: field.validation.maxFiles, actual: count };
+      if (
+        field.validation?.maxFiles !== undefined &&
+        count > field.validation.maxFiles
+      ) {
+        errors.maxFiles = {
+          maxFiles: field.validation.maxFiles,
+          actual: count,
+        };
       }
 
       return Object.keys(errors).length ? errors : null;
@@ -413,7 +485,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     const prompt = this.openAiService.prepareFormPrompt(
       text,
       this.fields(),
-      this.previewForm.value
+      this.previewForm.value,
     );
 
     this.openAiService.generateText(prompt).subscribe({
@@ -437,45 +509,49 @@ export class PreviewStep implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('AI service error:', err);
-      }
+      },
     });
   }
 
   onFileUpload(file: File) {
-    this.openAiService.extractDataFromFile(file, this.fields(), this.previewForm.value).subscribe({
-      next: (response) => {
-        try {
-          const textContent =
-            response?.output_text ||
-            response?.output?.[0]?.content?.[0]?.text ||
-            response?.choices?.[0]?.message?.content ||
-            '';
+    this.openAiService
+      .extractDataFromFile(file, this.fields(), this.previewForm.value)
+      .subscribe({
+        next: (response) => {
+          try {
+            const textContent =
+              response?.output_text ||
+              response?.output?.[0]?.content?.[0]?.text ||
+              response?.choices?.[0]?.message?.content ||
+              '';
 
-          if (!textContent) {
-            console.error('No content in AI response');
-            return;
+            if (!textContent) {
+              console.error('No content in AI response');
+              return;
+            }
+
+            const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+            const jsonText = jsonMatch ? jsonMatch[0] : textContent;
+            const formValues = JSON.parse(jsonText);
+            console.log('Extracted form values from file:', formValues);
+
+            this.previewForm.patchValue(formValues);
+          } catch (error) {
+            console.error('Error parsing AI response from file:', error);
           }
-
-          const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-          const jsonText = jsonMatch ? jsonMatch[0] : textContent;
-          const formValues = JSON.parse(jsonText);
-          console.log('Extracted form values from file:', formValues);
-
-          this.previewForm.patchValue(formValues);
-        } catch (error) {
-          console.error('Error parsing AI response from file:', error);
-        }
-      },
-      error: (err) => {
-        console.error('AI file extraction error:', err);
-      }
-    });
+        },
+        error: (err) => {
+          console.error('AI file extraction error:', err);
+        },
+      });
   }
 
   async onFilesAdded(field: FormField, files: File[]) {
     if (!files || !files.length) return;
     const current = this.filePreviews()[field.name] || [];
-    const previews = await Promise.all(files.map((file) => this.toPreviewEntry(file)));
+    const previews = await Promise.all(
+      files.map((file) => this.toPreviewEntry(file)),
+    );
     const updated = [...current, ...previews];
     this.updateFieldFiles(field.name, updated);
 
@@ -493,7 +569,10 @@ export class PreviewStep implements OnInit, OnDestroy {
     this.setBlurryWarning(fieldName, null);
   }
 
-  onBlurryAction(fieldName: string, event: { action: 'reupload' | 'keep'; index: number }) {
+  onBlurryAction(
+    fieldName: string,
+    event: { action: 'reupload' | 'keep'; index: number },
+  ) {
     if (event.action === 'reupload') {
       this.onRemoveFile(fieldName, event.index);
     } else {
@@ -569,7 +648,9 @@ export class PreviewStep implements OnInit, OnDestroy {
     }
   }
 
-  private extractBlurResult(response: any): { isBlurry: boolean; recommendReupload: boolean } | null {
+  private extractBlurResult(
+    response: any,
+  ): { isBlurry: boolean; recommendReupload: boolean } | null {
     if (!response) return null;
 
     const textContent =
@@ -599,11 +680,18 @@ export class PreviewStep implements OnInit, OnDestroy {
 
     if (!payload) return null;
 
-    const isBlurry = payload.is_blurry ?? payload.isBlurry ?? payload.blurry ?? false;
+    const isBlurry =
+      payload.is_blurry ?? payload.isBlurry ?? payload.blurry ?? false;
     const recommendReupload =
-      payload.recommend_reupload ?? payload.reupload ?? payload.is_blurry ?? false;
+      payload.recommend_reupload ??
+      payload.reupload ??
+      payload.is_blurry ??
+      false;
 
-    return { isBlurry: Boolean(isBlurry), recommendReupload: Boolean(recommendReupload) };
+    return {
+      isBlurry: Boolean(isBlurry),
+      recommendReupload: Boolean(recommendReupload),
+    };
   }
 
   private setBlurryWarning(fieldName: string, index: number | null) {

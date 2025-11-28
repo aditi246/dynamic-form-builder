@@ -1,12 +1,25 @@
 <div class="space-y-4">
   <textarea 
-    [(ngModel)]="textValue"
+    [ngModel]="textValue()"
     (ngModelChange)="onTextChange($event)"
     [placeholder]="placeholder"
     [rows]="rows"
     class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"></textarea>
   
-  <div class="flex items-center gap-3">
+  @if (selectedFile()) {
+    <div class="flex items-center gap-2 p-2 bg-bg border border-border rounded-md">
+      <app-icon name="copy" class="w-5 h-5 text-muted"></app-icon>
+      <span class="text-sm text-text flex-1 truncate">{{ selectedFile()!.name }}</span>
+      <button
+        type="button"
+        (click)="removeFile()"
+        class="text-muted hover:text-danger transition-colors">
+        <app-icon name="delete" class="w-4 h-4"></app-icon>
+      </button>
+    </div>
+  }
+  
+  <div class="flex items-center gap-3 flex-wrap">
     <button 
       type="button"
       (click)="isRecording() ? stopRecording() : startRecording()"
@@ -18,6 +31,16 @@
       <app-icon name="microphone" class="w-5 h-5"></app-icon>
       {{ isRecording() ? 'Stop Recording' : 'Start Voice Input' }}
     </button>
+    
+    <label class="px-4 py-2 border border-border rounded-md hover:bg-bg cursor-pointer font-medium flex items-center gap-2 transition-colors">
+      <app-icon name="upload" class="w-5 h-5"></app-icon>
+      Upload File
+      <input
+        type="file"
+        class="hidden"
+        accept="image/*,.pdf,.doc,.docx,.txt"
+        (change)="onFileSelected($event)">
+    </label>
     
     <button 
       type="button"

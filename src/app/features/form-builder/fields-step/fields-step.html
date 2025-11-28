@@ -149,12 +149,16 @@
             <label class="block text-sm font-medium text-text mb-2"
               >Default Value</label
             >
+            @if (!isFileType()) {
             <app-defaults
               [type]="currentType()"
               [options]="getOptionsArray()"
               [control]="defaultControl"
             >
             </app-defaults>
+            } @else {
+            <p class="text-sm text-muted">File uploads do not support default values.</p>
+            }
           </div>
 
           @if (isSelectType()) {
@@ -314,7 +318,7 @@
                 >
               </div>
 
-              @if (isTextType() || isNumberType()) {
+              @if (isTextType() || isNumberType() || isFileType()) {
               <div class="flex gap-4">
                 <div class="flex-1">
                   <label
@@ -322,7 +326,7 @@
                     [class.text-muted]="isTextType() && hasRegexPattern()"
                   >
                     @if (isTextType()) { Min Length } @else if (isNumberType())
-                    { Min Value }
+                    { Min Value } @else { Min Files }
                   </label>
                   <input
                     type="number"
@@ -337,7 +341,7 @@
                     [class.text-muted]="isTextType() && hasRegexPattern()"
                   >
                     @if (isTextType()) { Max Length } @else if (isNumberType())
-                    { Max Value }
+                    { Max Value } @else { Max Files }
                   </label>
                   <input
                     type="number"

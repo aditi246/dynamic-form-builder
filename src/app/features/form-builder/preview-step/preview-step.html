@@ -3,7 +3,8 @@
   <div class="bg-card rounded-md shadow-sm p-6">
     <h2 class="text-lg font-semibold text-text mb-4">Voice or AI command</h2>
     <app-audio-textarea 
-      (textChange)="onAiCommandChange($event)">
+      (textChange)="onAiCommandChange($event)"
+      (fileUpload)="onFileUpload($event)">
     </app-audio-textarea>
   </div>
 
@@ -109,6 +110,22 @@
               <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
             }
           }
+          
+           @else if (field.type === 'file') {
+             <app-file-input
+               [files]="filePreviews()[field.name] || []"
+               [multiple]="true"
+               [accept]="getAcceptForField(field)"
+               [blurryIndex]="blurryWarnings()[field.name] ?? null"
+               [analyzingIndex]="analyzingImages()[field.name] ?? null"
+               (filesAdded)="onFilesAdded(field, $event)"
+               (removeFile)="onRemoveFile(field.name, $event)"
+               (blurryAction)="onBlurryAction(field.name, $event)"
+             ></app-file-input>
+            @if (isFieldInvalid(field.name)) {
+              <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
+            }
+          }
         </div>
         }
       }
@@ -119,13 +136,13 @@
   <div class="flex justify-between">
     <button 
       type="button"
-      (click)="backStep.emit()"
+      (click)="onBack()"
       class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium">
       Back
     </button>
     <button 
       type="button"
-      (click)="nextStep.emit()"
+      (click)="onSubmit()"
       class="px-6 py-2 bg-success text-white rounded-md hover:opacity-90 font-medium">
       Submit
     </button>

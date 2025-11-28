@@ -1,0 +1,100 @@
+<div class="space-y-3">
+  <div
+    class="w-full border-2 border-dashed border-border rounded-md bg-card cursor-pointer transition-colors"
+    [class.border-primary]="dragActive()"
+    [class.bg-bg]="dragActive()"
+    (click)="fileInput.click()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    <input
+      #fileInput
+      type="file"
+      class="hidden"
+      [attr.multiple]="multiple ? '' : null"
+      [accept]="accept"
+      (change)="onFileChange($event)"
+    />
+    <div class="flex flex-col items-center justify-center py-6 text-center">
+      <app-icon name="plus" class="w-6 h-6 text-primary mb-2"></app-icon>
+      <p class="text-sm text-text font-medium">Click to upload or drag & drop</p>
+      <p class="text-xs text-muted">
+        Supported: {{ accept === 'image/*' ? 'Images' : 'All files' }}
+      </p>
+    </div>
+  </div>
+
+  @if (filesList.length) {
+  <div class="space-y-2">
+    @for (file of filesList; track file.file.name; let i = $index) {
+    <div class="flex items-center gap-3 border border-border rounded-md p-2 bg-card">
+      <div class="w-20 h-20 rounded-md overflow-hidden bg-bg border border-border flex items-center justify-center relative">
+        @if (file.previewUrl) {
+        <img [src]="file.previewUrl" alt="preview" class="w-full h-full object-cover" />
+        } @else {
+        <app-icon name="copy" class="w-6 h-6 text-muted"></app-icon>
+        }
+        @if (analyzingIndex === i) {
+        <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <app-icon name="spinner" class="w-5 h-5 animate-spin text-white"></app-icon>
+        </div>
+        }
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-text truncate">{{ file.file.name }}</p>
+        <p class="text-xs text-muted">
+          {{ (file.file.size / 1024) | number: '1.0-0' }} KB
+        </p>
+        @if (analyzingIndex === i) {
+        <p class="text-xs text-primary mt-1 flex items-center gap-1">
+          <app-icon name="spinner" class="w-3 h-3 animate-spin"></app-icon>
+          Analyzing image...
+        </p>
+        } @else if (file.isBlurry) {
+        <p class="text-xs text-amber-600 mt-1">Flagged as blurry</p>
+        }
+      </div>
+      <button
+        type="button"
+        class="text-muted hover:text-danger transition-colors"
+        (click)="onRemove(i)"
+      >
+        <app-icon name="delete" class="w-5 h-5"></app-icon>
+      </button>
+    </div>
+    }
+  </div>
+  }
+
+  @if (blurryIndex !== null && blurryIndex !== undefined) {
+  <div
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    (click)="resolveBlurry('keep')"
+  >
+    <div
+      class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border"
+      (click)="$event.stopPropagation()"
+    >
+      <p class="text-base font-semibold text-text mb-2">Blurry image detected</p>
+      <p class="text-sm text-muted">{{ blurryMessage }}</p>
+      <div class="flex gap-3 justify-end mt-4">
+        <button
+          type="button"
+          class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 text-sm"
+          (click)="resolveBlurry('reupload')"
+        >
+          Reupload
+        </button>
+        <button
+          type="button"
+          class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg text-sm"
+          (click)="resolveBlurry('keep')"
+        >
+          Keep it
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+</div>

@@ -4,25 +4,45 @@
     <div class="w-[60%] bg-card rounded-md shadow-sm p-6 flex flex-col">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h2 class="text-lg font-semibold text-text">
-            Current form: {{ displayFormName() }}
-          </h2>
           <h2 class="text-lg font-semibold text-text">Form Fields</h2>
+          <p class="text-sm text-muted">Current form: {{ displayFormName() }}</p>
         </div>
-        <button
-          (click)="addField()"
-          class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium"
-        >
-          + Add Field
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            (click)="sortByLabel()"
+            class="px-3 py-2 border border-border text-text rounded-md hover:bg-bg text-sm"
+          >
+            Sort by label ({{ sortDirection() === 'asc' ? 'A→Z' : 'Z→A' }})
+          </button>
+          <button
+            (click)="addField()"
+            class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium"
+          >
+            + Add Field
+          </button>
+        </div>
       </div>
 
       <div class="flex-1 overflow-auto">
         <table class="w-full">
           <thead>
             <tr class="border-b border-border bg-bg">
-              @for (column of ['Label', 'Name', 'Type', 'Required', 'Default
-              Value', 'Actions']; track column) {
+              <th class="text-left py-3 px-4 text-sm font-medium text-text">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 text-text hover:text-primary"
+                  (click)="sortByLabel()"
+                >
+                  Label
+                  <app-icon
+                    name="chevron-down"
+                    class="w-4 h-4 transition-transform"
+                    [class.rotate-180]="sortDirection() === 'asc'"
+                  ></app-icon>
+                </button>
+              </th>
+              @for (column of ['Name', 'Type', 'Required', 'Default Value', 'Actions']; track column) {
               <th class="text-left py-3 px-4 text-sm font-medium text-text">
                 {{ column }}
               </th>
@@ -31,32 +51,19 @@
           </thead>
           <tbody>
             @if (fields().length === 0) {
-            <!-- Template Row -->
-            <tr class="border-b border-border hover:bg-bg">
-              <td class="py-3 px-4 text-sm text-text">First Name</td>
-              <td class="py-3 px-4 text-sm text-muted">firstName</td>
-              <td class="py-3 px-4 text-sm text-text">Text</td>
-              <td class="py-3 px-4">
-                <app-icon name="check" class="w-5 h-5 text-success"></app-icon>
-              </td>
-              <td class="py-3 px-4 text-sm text-muted">-</td>
-              <td class="py-3 px-4">
-                <div class="flex items-center gap-3">
-                  <button
-                    class="text-muted hover:text-primary transition-colors"
-                  >
-                    <app-icon name="edit" class="w-5 h-5"></app-icon>
-                  </button>
-                  <button
-                    class="text-muted hover:text-danger transition-colors"
-                  >
-                    <app-icon name="delete" class="w-5 h-5"></app-icon>
-                  </button>
-                </div>
+            <tr>
+              <td colspan="6" class="py-6 px-4 text-center text-sm text-muted">
+                No fields added yet. Click “Add Field” to start building your form.
               </td>
             </tr>
             } @for (field of fields(); track field.name; let i = $index) {
-            <tr class="border-b border-border hover:bg-bg">
+            <tr
+              class="border-b border-border hover:bg-bg"
+              draggable="true"
+              (dragstart)="onDragStart(i)"
+              (dragover)="onDragOver($event)"
+              (drop)="onDrop($event, i)"
+            >
               <td class="py-3 px-4 text-sm text-text">{{ field.label }}</td>
               <td class="py-3 px-4 text-sm text-muted">{{ field.name }}</td>
               <td class="py-3 px-4 text-sm text-text capitalize">

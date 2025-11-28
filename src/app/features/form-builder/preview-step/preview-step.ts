@@ -3,17 +3,18 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators, FormsModule } 
 import { CommonModule } from '@angular/common';
 import { FormField } from '../fields-step/fields-step';
 import { Subscription } from 'rxjs';
-import { FormsManagementService } from '../../../shared/services/forms-management.service';
+import { FormsManagementService, SavedForm } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { AudioTextareaComponent } from '../../../components/audio-textarea/audio-textarea';
 import { FormConfigService } from '../../../shared/services/form-config.service';
 import { RulesEngineService } from '../../../shared/services/rules-engine.service';
 // import { AiService } from '../../../shared/services/ai.service';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-preview-step',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, FormsModule, IconComponent, AudioTextareaComponent],
+  imports: [ReactiveFormsModule, CommonModule, FormsModule, IconComponent, AudioTextareaComponent, HttpClientModule],
   templateUrl: './preview-step.html'
 })
 export class PreviewStep implements OnInit {
@@ -23,13 +24,19 @@ export class PreviewStep implements OnInit {
   fields = signal<FormField[]>([]);
   previewForm = new FormGroup({});
   hiddenFields = signal<Set<string>>(new Set());
+  selectOptions = signal<Record<string, { label: string; value: any }[]>>({});
+  loadingOptions = signal<Record<string, boolean>>({});
+  optionErrors = signal<Record<string, string>>({});
+  contextFieldNames = signal<Set<string>>(new Set());
+  isContextField = (name: string) => this.contextFieldNames().has(name);
 
   private valueChangesSub?: Subscription;
 
   constructor(
     private formConfigService: FormConfigService,
     private rulesEngineService: RulesEngineService,
-    private formsService: FormsManagementService
+    private formsService: FormsManagementService,
+    private http: HttpClient
   ) {
     effect(() => {
       this.formsService.forms(); // react to field updates
@@ -48,11 +55,19 @@ export class PreviewStep implements OnInit {
   }
 
   private loadFields(formId?: string | null, formName?: string | null) {
-    const fieldsData = this.formsService.getFormFields(formId, formName);
-    if (fieldsData && fieldsData.length > 0) {
-      this.fields.set(fieldsData as FormField[]);
+    const fieldsData = this.formsService.getFormFields(formId, formName) || [];
+    const contextFields = this.getUserContextFields();
+    const mergedFields: FormField[] = [
+      ...contextFields.filter(ctx => !fieldsData.some(f => f.name === ctx.name)),
+      ...(fieldsData as FormField[])
+    ];
+
+    if (mergedFields && mergedFields.length > 0) {
+      this.contextFieldNames.set(new Set(contextFields.map(f => f.name)));
+      this.fields.set(mergedFields as FormField[]);
       this.formConfigService.setFields(this.fields());
       this.buildForm();
+      this.loadDynamicOptions();
       this.applyRules();
       this.valueChangesSub?.unsubscribe();
       this.valueChangesSub = this.previewForm.valueChanges.subscribe(() => this.applyRules());
@@ -65,11 +80,28 @@ export class PreviewStep implements OnInit {
     this.fields.set([]);
     this.previewForm = new FormGroup({});
     this.hiddenFields.set(new Set());
+    this.selectOptions.set({});
+    this.loadingOptions.set({});
+    this.optionErrors.set({});
     this.valueChangesSub?.unsubscribe();
+  }
+
+  private getUserContextFields(): FormField[] {
+    const ctx = this.formsService.getFormContext(this.formsService.getCurrentFormId()) || [];
+    return ctx.map(entry => ({
+      label: entry.displayName || entry.key,
+      name: entry.key,
+      type: 'text',
+      required: true,
+      default: entry.value
+    }));
   }
 
   private buildForm() {
     const group: { [key: string]: FormControl } = {};
+    const contextValues = this.formsService.getFormContext(
+      this.formsService.getCurrentFormId()
+    ) || [];
     
     this.fields().forEach(field => {
       const validators: any[] = [];
@@ -107,7 +139,11 @@ export class PreviewStep implements OnInit {
       
       // Set default value
       let defaultValue: any = '';
-      if (field.default !== undefined && field.default !== null && field.default !== '') {
+      const ctxValue = contextValues.find(entry => entry.key === field.name)?.value;
+
+      if (ctxValue !== undefined && ctxValue !== null) {
+        defaultValue = ctxValue;
+      } else if (field.default !== undefined && field.default !== null && field.default !== '') {
         defaultValue = field.default;
       } else {
         if (field.type === 'checkbox') {
@@ -124,9 +160,17 @@ export class PreviewStep implements OnInit {
   }
 
   private applyRules() {
+    const contextValues = this.formsService.getFormContext(
+      this.formsService.getCurrentFormId()
+    ) || [];
+    const evaluationValues = {
+      ...contextValues.reduce((acc, entry) => ({ ...acc, [entry.key]: entry.value }), {}),
+      ...this.previewForm.getRawValue()
+    };
+
     const evaluation = this.rulesEngineService.evaluate(
       this.formConfigService.rules(),
-      this.previewForm.getRawValue(),
+      evaluationValues,
       this.fields()
     );
 
@@ -197,6 +241,91 @@ export class PreviewStep implements OnInit {
     }
     
     return '';
+  }
+
+  getOptionsForField(field: FormField): { label: string; value: any }[] {
+    if (field.type !== 'select') return [];
+    if (field.selectSource === 'api') {
+      const loaded = this.selectOptions()[field.name];
+      if (loaded && loaded.length) return loaded;
+    }
+    return (field.options || []).map(opt => ({ label: opt, value: opt }));
+  }
+
+  isOptionsLoading(fieldName: string): boolean {
+    return this.loadingOptions()[fieldName] === true;
+  }
+
+  getOptionError(fieldName: string): string | undefined {
+    return this.optionErrors()[fieldName];
+  }
+
+  refreshOptions(field: FormField) {
+    if (field.type === 'select' && field.selectSource === 'api') {
+      this.fetchOptions(field);
+    }
+  }
+
+  private loadDynamicOptions() {
+    this.fields()
+      .filter(f => f.type === 'select' && f.selectSource === 'api' && f.apiOptions?.url)
+      .forEach(f => this.fetchOptions(f));
+  }
+
+  private fetchOptions(field: FormField) {
+    if (!field.apiOptions?.url) return;
+    this.loadingOptions.update(map => ({ ...map, [field.name]: true }));
+    this.optionErrors.update(map => {
+      const copy = { ...map };
+      delete copy[field.name];
+      return copy;
+    });
+
+    this.http.get(field.apiOptions.url).subscribe({
+      next: (res: any) => {
+        const list = this.extractItems(res, field.apiOptions?.itemsPath);
+        const mapped = Array.isArray(list)
+          ? list
+              .map((item: any) => this.mapOption(item, field))
+              .filter((x): x is { label: string; value: any } => !!x)
+          : [];
+        if (!mapped.length) {
+          this.optionErrors.update(map => ({ ...map, [field.name]: 'No options returned from API' }));
+        }
+        this.selectOptions.update(map => ({ ...map, [field.name]: mapped }));
+        this.loadingOptions.update(map => ({ ...map, [field.name]: false }));
+      },
+      error: () => {
+        this.optionErrors.update(map => ({ ...map, [field.name]: 'Failed to load options' }));
+        this.loadingOptions.update(map => ({ ...map, [field.name]: false }));
+      }
+    });
+  }
+
+  private extractItems(res: any, path?: string) {
+    if (!path) return res;
+    const segments = path.split('.').filter(Boolean);
+    let current: any = res;
+    for (const seg of segments) {
+      if (current && typeof current === 'object' && seg in current) {
+        current = current[seg];
+      } else {
+        return [];
+      }
+    }
+    return current;
+  }
+
+  private mapOption(item: any, field: FormField): { label: string; value: any } | null {
+    if (!field.apiOptions) return null;
+    const label = field.apiOptions.labelField ? item?.[field.apiOptions.labelField] : item;
+    const rawValue = field.apiOptions.valueField ? item?.[field.apiOptions.valueField] : item;
+    const value =
+      field.apiOptions.saveStrategy === 'label'
+        ? label
+        : rawValue;
+    if (label === undefined || value === undefined) return null;
+    return { label: String(label), value };
   }
 
   onAiCommandChange(text: string) {

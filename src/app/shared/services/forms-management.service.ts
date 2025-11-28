@@ -9,6 +9,11 @@ export interface SavedForm {
   fieldCount?: number;
   ruleCount?: number;
   fields?: any[];
+  userContext?: Array<{
+    key: string;
+    displayName: string;
+    value: string;
+  }>;
 }
 
 @Injectable({
@@ -39,12 +44,18 @@ export class FormsManagementService {
       }
     }
 
-    this.forms.set(forms || []);
+    const normalized = (forms || []).map(form => ({
+      ...form,
+      userContext: Array.isArray(form.userContext) ? form.userContext : []
+    }));
+
+    this.forms.set(normalized);
   }
 
-  createForm(name: string): string {
+  createForm(name: string, userContext?: SavedForm['userContext']): string {
     const formId = this.generateId();
     const now = new Date().toISOString();
+    const resolvedContext = Array.isArray(userContext) ? userContext : [];
     
     const newForm: SavedForm = {
       id: formId,
@@ -53,7 +64,8 @@ export class FormsManagementService {
       updatedAt: now,
       fieldCount: 0,
       ruleCount: 0,
-      fields: []
+      fields: [],
+      userContext: resolvedContext
     };
 
     this.forms.update(forms => [...forms, newForm]);
@@ -102,6 +114,12 @@ export class FormsManagementService {
     const formId = this.currentFormId();
     const form = formId ? this.getFormById(formId) : null;
     return form ? form.name : null;
+  }
+
+  getFormContext(formId?: string | null): SavedForm['userContext'] | null {
+    const targetId = formId || this.currentFormId();
+    const form = targetId ? this.getFormById(targetId) : null;
+    return Array.isArray(form?.userContext) ? form?.userContext : [];
   }
 
   getFormById(formId: string): SavedForm | undefined {
@@ -191,7 +209,8 @@ export class FormsManagementService {
       updatedAt: now,
       fieldCount: fieldCount,
       ruleCount: ruleCount,
-      fields: copiedFields
+      fields: copiedFields,
+      userContext: sourceForm.userContext ? { ...sourceForm.userContext } : undefined
     };
 
     this.forms.update(forms => [...forms, copiedForm]);

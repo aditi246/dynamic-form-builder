@@ -245,6 +245,11 @@ export class FieldsStep {
     return this.fieldForm.get('default') as FormControl | null;
   }
 
+  isInvalid(controlName: string): boolean {
+    const ctrl = this.fieldForm.get(controlName);
+    return !!ctrl && ctrl.invalid && (ctrl.dirty || ctrl.touched);
+  }
+
   getOptionsArray(): string[] {
     if (
       this.currentType() === 'select' &&
@@ -394,6 +399,11 @@ export class FieldsStep {
       this.formsService.getCurrentFormId() || this.formName()?.trim();
     if (!hasFormTarget) {
       alert('Please select or create a form before adding fields.');
+      return;
+    }
+
+    if (this.fieldForm.invalid) {
+      this.fieldForm.markAllAsTouched();
       return;
     }
 

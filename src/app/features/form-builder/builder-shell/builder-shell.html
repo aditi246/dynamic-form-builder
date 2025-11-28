@@ -1,66 +1,65 @@
-<div class="min-h-screen bg-bg">
-  <header class="bg-primary text-white">
+<div class="min-h-screen bg-bg flex flex-col">
+  <header class="bg-primary text-white sticky top-0 z-20">
     <div class="px-6 py-4">
       <h1 class="text-xl font-semibold">Dynamic Form Generator</h1>
     </div>
+    <!-- Tabs Navigation -->
+    <nav class="bg-card border-t border-border">
+      <div class="px-6 flex gap-8">
+        <button
+          (click)="goToStep('forms')"
+          class="py-4 px-2 border-b-2 font-medium transition-colors"
+          [class.border-primary]="currentStep() === 'forms'"
+          [class.text-primary]="currentStep() === 'forms'"
+          [class.border-transparent]="currentStep() !== 'forms'"
+          [class.text-muted]="currentStep() !== 'forms'"
+        >
+          Forms
+        </button>
+        <button
+          (click)="goToStep('fields')"
+          [disabled]="!hasActiveForm()"
+          class="py-4 px-2 border-b-2 font-medium transition-colors"
+          [class.border-primary]="currentStep() === 'fields'"
+          [class.text-primary]="currentStep() === 'fields'"
+          [class.border-transparent]="currentStep() !== 'fields'"
+          [class.text-muted]="currentStep() !== 'fields' || !hasActiveForm()"
+          [class.opacity-50]="!hasActiveForm()"
+          [class.cursor-not-allowed]="!hasActiveForm()"
+        >
+          Builder
+        </button>
+        <button
+          (click)="goToStep('rules')"
+          [disabled]="!hasActiveForm()"
+          class="py-4 px-2 border-b-2 font-medium transition-colors"
+          [class.border-primary]="currentStep() === 'rules'"
+          [class.text-primary]="currentStep() === 'rules'"
+          [class.border-transparent]="currentStep() !== 'rules'"
+          [class.text-muted]="currentStep() !== 'rules' || !hasActiveForm()"
+          [class.opacity-50]="!hasActiveForm()"
+          [class.cursor-not-allowed]="!hasActiveForm()"
+        >
+          Rules
+        </button>
+        <button
+          (click)="goToStep('preview')"
+          [disabled]="!hasActiveForm()"
+          class="py-4 px-2 border-b-2 font-medium transition-colors"
+          [class.border-primary]="currentStep() === 'preview'"
+          [class.text-primary]="currentStep() === 'preview'"
+          [class.border-transparent]="currentStep() !== 'preview'"
+          [class.text-muted]="currentStep() !== 'preview' || !hasActiveForm()"
+          [class.opacity-50]="!hasActiveForm()"
+          [class.cursor-not-allowed]="!hasActiveForm()"
+        >
+          Preview
+        </button>
+      </div>
+    </nav>
   </header>
 
-  <!-- Tabs Navigation -->
-  <nav class="bg-card border-b border-border">
-    <div class="px-6 flex gap-8">
-      <button
-        (click)="goToStep('forms')"
-        class="py-4 px-2 border-b-2 font-medium transition-colors"
-        [class.border-primary]="currentStep() === 'forms'"
-        [class.text-primary]="currentStep() === 'forms'"
-        [class.border-transparent]="currentStep() !== 'forms'"
-        [class.text-muted]="currentStep() !== 'forms'"
-      >
-        Forms
-      </button>
-      <button
-        (click)="goToStep('fields')"
-        [disabled]="!hasActiveForm()"
-        class="py-4 px-2 border-b-2 font-medium transition-colors"
-        [class.border-primary]="currentStep() === 'fields'"
-        [class.text-primary]="currentStep() === 'fields'"
-        [class.border-transparent]="currentStep() !== 'fields'"
-        [class.text-muted]="currentStep() !== 'fields' || !hasActiveForm()"
-        [class.opacity-50]="!hasActiveForm()"
-        [class.cursor-not-allowed]="!hasActiveForm()"
-      >
-        Builder
-      </button>
-      <button
-        (click)="goToStep('rules')"
-        [disabled]="!hasActiveForm()"
-        class="py-4 px-2 border-b-2 font-medium transition-colors"
-        [class.border-primary]="currentStep() === 'rules'"
-        [class.text-primary]="currentStep() === 'rules'"
-        [class.border-transparent]="currentStep() !== 'rules'"
-        [class.text-muted]="currentStep() !== 'rules' || !hasActiveForm()"
-        [class.opacity-50]="!hasActiveForm()"
-        [class.cursor-not-allowed]="!hasActiveForm()"
-      >
-        Rules
-      </button>
-      <button
-        (click)="goToStep('preview')"
-        [disabled]="!hasActiveForm()"
-        class="py-4 px-2 border-b-2 font-medium transition-colors"
-        [class.border-primary]="currentStep() === 'preview'"
-        [class.text-primary]="currentStep() === 'preview'"
-        [class.border-transparent]="currentStep() !== 'preview'"
-        [class.text-muted]="currentStep() !== 'preview' || !hasActiveForm()"
-        [class.opacity-50]="!hasActiveForm()"
-        [class.cursor-not-allowed]="!hasActiveForm()"
-      >
-        Preview
-      </button>
-    </div>
-  </nav>
-
-  <main class="p-6">
+  <main class="p-6 pb-28 flex-1 overflow-auto">
     @if (currentStep() === 'forms') {
     <app-forms-step
       (nextStep)="onNextStep()"
@@ -80,9 +79,31 @@
     ></app-rules-step>
     } @else if (currentStep() === 'preview') {
     <app-preview-step
+      #previewCmp
       (nextStep)="onNextStep()"
       (backStep)="onBackStep()"
     ></app-preview-step>
     }
   </main>
+
+  <footer
+    class="bg-white border-t border-border px-6 py-4 flex items-center justify-between fixed bottom-0 left-0 right-0 z-20"
+  >
+    <button
+      type="button"
+      (click)="handleBackClick()"
+      class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+      [disabled]="currentStep() === 'forms'"
+    >
+      Back
+    </button>
+    <button
+      type="button"
+      (click)="handleNextClick()"
+      class="px-6 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+      [disabled]="currentStep() === 'forms' && !hasActiveForm()"
+    >
+      {{ currentStep() === 'preview' ? 'Submit' : 'Next' }}
+    </button>
+  </footer>
 </div>

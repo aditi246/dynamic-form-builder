@@ -1,4 +1,4 @@
-import { Component, computed, effect, signal } from '@angular/core';
+import { Component, ViewChild, computed, effect, signal } from '@angular/core';
 import { FormsStep } from '../forms-step/forms-step';
 import { FieldsStep } from '../fields-step/fields-step';
 import { RulesStep } from '../rules-step/rules-step';
@@ -12,6 +12,7 @@ import { FormsManagementService } from '../../../shared/services/forms-managemen
   templateUrl: './builder-shell.html',
 })
 export class BuilderShell {
+  @ViewChild('previewCmp') previewCmp?: PreviewStep;
   currentStep = signal<'forms' | 'fields' | 'rules' | 'preview'>('forms');
   formEngaged = signal<boolean>(false);
   hasActiveForm = computed(
@@ -56,7 +57,7 @@ export class BuilderShell {
     } else if (this.currentStep() === 'rules') {
       this.currentStep.set('preview');
     } else if (this.currentStep() === 'preview') {
-      // Handle submit (could finish or show success)
+      this.previewCmp?.onSubmit();
     }
   }
 
@@ -77,5 +78,17 @@ export class BuilderShell {
       this.formEngaged.set(true);
       this.currentStep.set('fields');
     }
+  }
+
+  handleBackClick() {
+    this.onBackStep();
+  }
+
+  handleNextClick() {
+    if (this.currentStep() === 'preview') {
+      this.previewCmp?.onSubmit();
+      return;
+    }
+    this.onNextStep();
   }
 }

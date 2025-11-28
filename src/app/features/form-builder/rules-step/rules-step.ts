@@ -58,6 +58,7 @@ export class RulesStep implements OnInit {
     });
     return groups;
   });
+  collapsedMap = signal<Record<string, boolean>>({});
   editingRuleId = signal<string | null>(null);
   conditions = signal<RuleCondition[]>([]);
 
@@ -139,6 +140,26 @@ export class RulesStep implements OnInit {
       }
     });
 
+    effect(() => {
+      const groups = this.groupedRules();
+      this.collapsedMap.update((map) => {
+        const next = { ...map };
+        // default new groups to collapsed
+        groups.forEach((g) => {
+          if (next[g.targetField] === undefined) {
+            next[g.targetField] = true;
+          }
+        });
+        // prune removed targets
+        Object.keys(next).forEach((key) => {
+          if (!groups.find((g) => g.targetField === key)) {
+            delete next[key];
+          }
+        });
+        return next;
+      });
+    });
+
     this.ruleForm.get('targetField')?.valueChanges.subscribe(() => {
       const isSelect = this.isTargetSelect();
       const actionCtrl = this.ruleForm.get('actionType');
@@ -153,6 +174,21 @@ export class RulesStep implements OnInit {
         hideOptionsCtrl?.setValue([], { emitEvent: false });
       }
     });
+
+    this.ruleForm.get('thresholdType')?.valueChanges.subscribe((type) => {
+      if (type === 'field') {
+        this.ruleForm.get('thresholdValue')?.setValue('', { emitEvent: false });
+      } else {
+        this.ruleForm.get('thresholdField')?.setValue('', { emitEvent: false });
+      }
+      this.syncThresholdValidators();
+    });
+
+    this.ruleForm.get('actionType')?.valueChanges.subscribe(() => {
+      this.syncThresholdValidators();
+    });
+
+    this.syncThresholdValidators();
   }
 
   ngOnInit() {
@@ -197,8 +233,18 @@ export class RulesStep implements OnInit {
     const targetField = formValue.targetField;
     const actionType = formValue.actionType;
 
+    if (this.ruleForm.invalid) {
+      this.ruleForm.markAllAsTouched();
+      return;
+    }
+
     if (!targetField || !actionType) {
       this.ruleForm.markAllAsTouched();
+      return;
+    }
+
+    if (!formValue.name || !formValue.name.trim()) {
+      this.ruleForm.get('name')?.markAsTouched();
       return;
     }
 
@@ -257,11 +303,15 @@ export class RulesStep implements OnInit {
         (action.value === null || action.value === undefined)
       ) {
         this.ruleForm.get('thresholdValue')?.setErrors({ required: true });
+        this.ruleForm.get('thresholdValue')?.markAsTouched();
+        this.ruleForm.get('thresholdValue')?.markAsDirty();
         return;
       }
 
       if (action.valueSource === 'field' && !action.otherField) {
         this.ruleForm.get('thresholdField')?.setErrors({ required: true });
+        this.ruleForm.get('thresholdField')?.markAsTouched();
+        this.ruleForm.get('thresholdField')?.markAsDirty();
         return;
       }
     }
@@ -366,6 +416,8 @@ export class RulesStep implements OnInit {
   }
 
   getFieldLabel(fieldName: string): string {
+    const ctxLabel = this.getContextLabel(fieldName);
+    if (ctxLabel) return ctxLabel;
     const field = this.fields().find((f) => f.name === fieldName);
     return field ? field.label : fieldName;
   }
@@ -417,9 +469,44 @@ export class RulesStep implements OnInit {
     return this.userContextEntriesSignal();
   }
 
+  isInvalid(controlName: string): boolean {
+    const ctrl = this.ruleForm.get(controlName);
+    return !!ctrl && ctrl.invalid && (ctrl.dirty || ctrl.touched);
+  }
+
+  hasError(controlName: string, errorKey: string): boolean {
+    const ctrl = this.ruleForm.get(controlName);
+    return !!ctrl && ctrl.hasError(errorKey) && (ctrl.dirty || ctrl.touched);
+  }
+
   getTargetField(): FormField | undefined {
     const target = this.ruleForm.value.targetField;
     return this.fields().find((f) => f.name === target);
+  }
+
+  private syncThresholdValidators() {
+    const isValidation =
+      this.ruleForm.get('actionType')?.value === 'validation';
+    const type = this.ruleForm.get('thresholdType')?.value;
+    const valueCtrl = this.ruleForm.get('thresholdValue');
+    const fieldCtrl = this.ruleForm.get('thresholdField');
+    if (!isValidation) {
+      valueCtrl?.clearValidators();
+      fieldCtrl?.clearValidators();
+      valueCtrl?.updateValueAndValidity({ emitEvent: false });
+      fieldCtrl?.updateValueAndValidity({ emitEvent: false });
+      return;
+    }
+
+    if (type === 'field') {
+      fieldCtrl?.setValidators([Validators.required]);
+      valueCtrl?.clearValidators();
+    } else {
+      valueCtrl?.setValidators([Validators.required]);
+      fieldCtrl?.clearValidators();
+    }
+    valueCtrl?.updateValueAndValidity({ emitEvent: false });
+    fieldCtrl?.updateValueAndValidity({ emitEvent: false });
   }
 
   getStaticValueOptionsForTarget(): { label: string; value: any }[] {
@@ -571,5 +658,41 @@ export class RulesStep implements OnInit {
   ): '<' | '<=' | '>' | '>=' | '==' | '!=' | 'contains' {
     const allowed = this.getComparatorOptions().map((c) => c.value);
     return (allowed.includes(requested) ? requested : allowed[0]) as any;
+  }
+
+  private getContextLabel(fieldName: string): string | null {
+    const ctx = this.userContextEntriesSignal().find(
+      (c) => c.key === fieldName,
+    );
+    if (!ctx) return null;
+    return ctx.displayName || ctx.key || null;
+  }
+
+  isGroupCollapsed(target: string): boolean {
+    const map = this.collapsedMap();
+    return map[target] !== undefined ? map[target] : true;
+  }
+
+  toggleGroup(target: string) {
+    this.collapsedMap.update((map) => ({
+      ...map,
+      [target]: !(map[target] !== undefined ? map[target] : true),
+    }));
+  }
+
+  collapseAllGroups() {
+    const map: Record<string, boolean> = {};
+    this.groupedRules().forEach((g) => {
+      map[g.targetField] = true;
+    });
+    this.collapsedMap.set(map);
+  }
+
+  expandAllGroups() {
+    const map: Record<string, boolean> = {};
+    this.groupedRules().forEach((g) => {
+      map[g.targetField] = false;
+    });
+    this.collapsedMap.set(map);
   }
 }

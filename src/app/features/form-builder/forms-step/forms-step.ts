@@ -161,7 +161,22 @@ export class FormsStep implements OnInit {
   }
 
   loadMockForm() {
-    this.storageService.setItem('formlist', MOCK_FORMLIST);
+    const existing = this.formsService.forms();
+    const mockName = MOCK_FORMLIST[0].name.trim().toLowerCase();
+    const nameExists = existing.some(
+      (f) => f.name.trim().toLowerCase() === mockName,
+    );
+    if (nameExists) {
+      alert('Mock form already exists. No changes made.');
+      return;
+    }
+
+    const updated = [
+      ...existing.filter((f) => f.id !== MOCK_FORM_ID),
+      ...MOCK_FORMLIST,
+    ];
+
+    this.storageService.setItem('formlist', updated);
     this.storageService.setItem(
       `form-builder-rules-${MOCK_FORM_ID}`,
       MOCK_RULES,

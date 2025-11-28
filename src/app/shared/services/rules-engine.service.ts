@@ -1,5 +1,10 @@
 import { Injectable } from '@angular/core';
-import { CustomRule, RuleCondition, RuleAction, ConditionOperator } from './form-config.service';
+import {
+  CustomRule,
+  RuleCondition,
+  RuleAction,
+  ConditionOperator,
+} from './form-config.service';
 import { FormField } from '../../features/form-builder/fields-step/fields-step';
 
 export interface RuleEvaluationResult {
@@ -9,20 +14,23 @@ export interface RuleEvaluationResult {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class RulesEngineService {
   evaluate(
     rules: CustomRule[],
     formValues: Record<string, any>,
-    fields: FormField[]
+    fields: FormField[],
   ): RuleEvaluationResult {
     const hiddenFields = new Set<string>();
     const fieldErrors: Record<string, string> = {};
     const optionHides: Record<string, Set<string>> = {};
 
-    rules.forEach(rule => {
-      const conditionsMet = this.conditionsSatisfied(rule.conditions, formValues);
+    rules.forEach((rule) => {
+      const conditionsMet = this.conditionsSatisfied(
+        rule.conditions,
+        formValues,
+      );
       if (!conditionsMet) {
         return;
       }
@@ -35,11 +43,13 @@ export class RulesEngineService {
         hiddenFields.delete(actionResult.showField);
       }
       if (actionResult?.fieldError) {
-        fieldErrors[actionResult.fieldError.field] = actionResult.fieldError.message;
+        fieldErrors[actionResult.fieldError.field] =
+          actionResult.fieldError.message;
       }
       if (actionResult?.hideOptions) {
-        const existing = optionHides[actionResult.hideOptions.field] || new Set<string>();
-        actionResult.hideOptions.options.forEach(o => existing.add(o));
+        const existing =
+          optionHides[actionResult.hideOptions.field] || new Set<string>();
+        actionResult.hideOptions.options.forEach((o) => existing.add(o));
         optionHides[actionResult.hideOptions.field] = existing;
       }
     });
@@ -47,22 +57,35 @@ export class RulesEngineService {
     return { hiddenFields, fieldErrors, optionHides };
   }
 
-  private conditionsSatisfied(conditions: RuleCondition[], values: Record<string, any>): boolean {
+  private conditionsSatisfied(
+    conditions: RuleCondition[],
+    values: Record<string, any>,
+  ): boolean {
     if (!conditions || conditions.length === 0) {
       return true;
     }
 
-    return conditions.every(condition => {
+    return conditions.every((condition) => {
       const left = values[condition.field];
-      return this.evaluateCondition(left, condition.operator, condition.value, condition.values);
+      return this.evaluateCondition(
+        left,
+        condition.operator,
+        condition.value,
+        condition.values,
+      );
     });
   }
 
   private applyAction(
     action: RuleAction,
     values: Record<string, any>,
-    fields: FormField[]
-  ): { hideField?: string; showField?: string; fieldError?: { field: string; message: string }; hideOptions?: { field: string; options: string[] } } | null {
+    fields: FormField[],
+  ): {
+    hideField?: string;
+    showField?: string;
+    fieldError?: { field: string; message: string };
+    hideOptions?: { field: string; options: string[] };
+  } | null {
     if (action.type === 'hide-field') {
       return { hideField: action.targetField };
     }
@@ -72,7 +95,12 @@ export class RulesEngineService {
     }
 
     if (action.type === 'hide-options') {
-      return { hideOptions: { field: action.targetField, options: action.options || [] } };
+      return {
+        hideOptions: {
+          field: action.targetField,
+          options: action.options || [],
+        },
+      };
     }
 
     if (action.type === 'enforce-comparison') {
@@ -83,30 +111,37 @@ export class RulesEngineService {
           : values[action.otherField || ''];
       const offset = action.valueSource === 'field' ? action.offset || 0 : 0;
 
-      const targetField = fields.find(f => f.name === action.targetField);
-      const comparatorField = action.valueSource === 'field'
-        ? fields.find(f => f.name === action.otherField)
-        : undefined;
+      const targetField = fields.find((f) => f.name === action.targetField);
+      const comparatorField =
+        action.valueSource === 'field'
+          ? fields.find((f) => f.name === action.otherField)
+          : undefined;
 
       const left = this.normalizeValue(targetValue, targetField?.type);
       const right = this.normalizeValue(
-        typeof comparatorValue === 'number' ? comparatorValue + offset : comparatorValue,
-        comparatorField?.type || targetField?.type
+        typeof comparatorValue === 'number'
+          ? comparatorValue + offset
+          : comparatorValue,
+        comparatorField?.type || targetField?.type,
       );
 
       if (left.value === null || right.value === null) {
         return null;
       }
 
-      const passes = this.compareValues(left.value, right.value, action.comparator);
+      const passes = this.compareValues(
+        left.value,
+        right.value,
+        action.comparator,
+      );
       if (!passes) {
         return {
           fieldError: {
             field: action.targetField,
             message:
               action.errorMessage ||
-              `Must be ${action.comparator} ${action.valueSource === 'static' ? action.value : 'selected field'}`
-          }
+              `Must be ${action.comparator} ${action.valueSource === 'static' ? action.value : 'selected field'}`,
+          },
         };
       }
     }
@@ -118,7 +153,7 @@ export class RulesEngineService {
     value: any,
     operator: ConditionOperator,
     triggerValue?: string,
-    triggerValues?: string[]
+    triggerValues?: string[],
   ): boolean {
     if (operator === 'isTrue') {
       return value === true || value === 'true';
@@ -130,7 +165,10 @@ export class RulesEngineService {
       return false;
     }
 
-    const multi = triggerValues && triggerValues.length ? triggerValues.map(v => String(v)) : null;
+    const multi =
+      triggerValues && triggerValues.length
+        ? triggerValues.map((v) => String(v))
+        : null;
 
     switch (operator) {
       case 'equals':
@@ -144,9 +182,13 @@ export class RulesEngineService {
         }
         return String(value) !== String(triggerValue);
       case 'contains':
-        return String(value).toLowerCase().includes(String(triggerValue || '').toLowerCase());
+        return String(value)
+          .toLowerCase()
+          .includes(String(triggerValue || '').toLowerCase());
       case 'not-contains':
-        return !String(value).toLowerCase().includes(String(triggerValue || '').toLowerCase());
+        return !String(value)
+          .toLowerCase()
+          .includes(String(triggerValue || '').toLowerCase());
       case 'gt':
         return Number(value) > Number(triggerValue);
       case 'gte':
@@ -160,14 +202,19 @@ export class RulesEngineService {
     }
   }
 
-  private normalizeValue(raw: any, type?: string): { value: number | string | null } {
+  private normalizeValue(
+    raw: any,
+    type?: string,
+  ): { value: number | string | null } {
     if (raw === null || raw === undefined || raw === '') {
       return { value: null };
     }
 
     if (type === 'date') {
       const date = new Date(raw);
-      return isNaN(date.getTime()) ? { value: null } : { value: date.getTime() };
+      return isNaN(date.getTime())
+        ? { value: null }
+        : { value: date.getTime() };
     }
 
     const numeric = Number(raw);
@@ -178,7 +225,11 @@ export class RulesEngineService {
     return { value: String(raw).toLowerCase() };
   }
 
-  private compareValues(left: number | string, right: number | string, comparator: string): boolean {
+  private compareValues(
+    left: number | string,
+    right: number | string,
+    comparator: string,
+  ): boolean {
     switch (comparator) {
       case '<':
         return left < right;

@@ -7,7 +7,7 @@ import { IconComponent } from '../icon/icon';
   selector: 'app-audio-textarea',
   standalone: true,
   imports: [CommonModule, FormsModule, IconComponent],
-  templateUrl: './audio-textarea.html'
+  templateUrl: './audio-textarea.html',
 })
 export class AudioTextareaComponent implements OnInit, OnDestroy {
   textChange = output<string>();
@@ -19,14 +19,17 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
   isProcessing = signal<boolean>(false);
   selectedFile = signal<File | null>(null);
   recognition: any = null;
-  
-  readonly placeholder = 'e.g., \'Fill out the form for a new user named Aditi...\'';
+
+  readonly placeholder =
+    "e.g., 'Fill out the form for a new user named Aditi...'";
   readonly rows = 4;
 
   ngOnInit() {
     // Initialize Speech Recognition API
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
         this.recognition = new SpeechRecognition();
         this.recognition.continuous = true;
@@ -78,7 +81,9 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
 
   startRecording() {
     if (!this.recognition) {
-      alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
+      alert(
+        'Speech recognition is not supported in your browser. Please use Chrome or Edge.',
+      );
       return;
     }
 
@@ -128,4 +133,3 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
     this.selectedFile.set(null);
   }
 }
-

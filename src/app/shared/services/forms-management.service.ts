@@ -17,13 +17,13 @@ export interface SavedForm {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class FormsManagementService {
   private readonly FORMS_LIST_KEY = 'formlist';
   private readonly LEGACY_FORMS_LIST_KEY = 'form-builder-forms-list';
   private readonly CURRENT_FORM_KEY = 'form-builder-current-form-id';
-  
+
   forms = signal<SavedForm[]>([]);
   currentFormId = signal<string | null>(null);
 
@@ -36,7 +36,9 @@ export class FormsManagementService {
     let forms = this.storageService.getItem<SavedForm[]>(this.FORMS_LIST_KEY);
 
     if (!forms || !Array.isArray(forms)) {
-      const legacyForms = this.storageService.getItem<SavedForm[]>(this.LEGACY_FORMS_LIST_KEY);
+      const legacyForms = this.storageService.getItem<SavedForm[]>(
+        this.LEGACY_FORMS_LIST_KEY,
+      );
       if (legacyForms && Array.isArray(legacyForms)) {
         forms = legacyForms;
         this.storageService.setItem(this.FORMS_LIST_KEY, legacyForms);
@@ -44,9 +46,9 @@ export class FormsManagementService {
       }
     }
 
-    const normalized = (forms || []).map(form => ({
+    const normalized = (forms || []).map((form) => ({
       ...form,
-      userContext: Array.isArray(form.userContext) ? form.userContext : []
+      userContext: Array.isArray(form.userContext) ? form.userContext : [],
     }));
 
     this.forms.set(normalized);
@@ -56,7 +58,7 @@ export class FormsManagementService {
     const formId = this.generateId();
     const now = new Date().toISOString();
     const resolvedContext = Array.isArray(userContext) ? userContext : [];
-    
+
     const newForm: SavedForm = {
       id: formId,
       name: name.trim() || 'Untitled Form',
@@ -65,33 +67,33 @@ export class FormsManagementService {
       fieldCount: 0,
       ruleCount: 0,
       fields: [],
-      userContext: resolvedContext
+      userContext: resolvedContext,
     };
 
-    this.forms.update(forms => [...forms, newForm]);
+    this.forms.update((forms) => [...forms, newForm]);
     this.saveForms();
     this.setCurrentForm(formId);
-    
+
     return formId;
   }
 
   updateForm(formId: string, updates: Partial<SavedForm>): void {
-    this.forms.update(forms =>
-      forms.map(form =>
+    this.forms.update((forms) =>
+      forms.map((form) =>
         form.id === formId
           ? { ...form, ...updates, updatedAt: new Date().toISOString() }
-          : form
-      )
+          : form,
+      ),
     );
     this.saveForms();
   }
 
   deleteForm(formId: string): void {
-    this.forms.update(forms => forms.filter(form => form.id !== formId));
+    this.forms.update((forms) => forms.filter((form) => form.id !== formId));
     this.saveForms();
-    
+
     this.storageService.removeItem(`form-builder-rules-${formId}`);
-    
+
     if (this.currentFormId() === formId) {
       this.setCurrentForm(null);
     }
@@ -123,7 +125,7 @@ export class FormsManagementService {
   }
 
   getFormById(formId: string): SavedForm | undefined {
-    return this.forms().find(form => form.id === formId);
+    return this.forms().find((form) => form.id === formId);
   }
 
   getFormFields(formId?: string | null, formName?: string | null): any[] {
@@ -143,17 +145,25 @@ export class FormsManagementService {
     return [];
   }
 
-  saveFormFields(formId: string | null, fields: any[], formName?: string | null): boolean {
+  saveFormFields(
+    formId: string | null,
+    fields: any[],
+    formName?: string | null,
+  ): boolean {
     const normalizedName = formName?.trim();
     const forms = this.forms();
 
-    const targetIndex = forms.findIndex(form =>
-      (formId && form.id === formId) ||
-      (normalizedName && form.name.toLowerCase() === normalizedName.toLowerCase())
+    const targetIndex = forms.findIndex(
+      (form) =>
+        (formId && form.id === formId) ||
+        (normalizedName &&
+          form.name.toLowerCase() === normalizedName.toLowerCase()),
     );
 
     if (targetIndex === -1) {
-      console.error('Cannot save fields: form was not found for the provided identifier');
+      console.error(
+        'Cannot save fields: form was not found for the provided identifier',
+      );
       return false;
     }
 
@@ -166,7 +176,7 @@ export class FormsManagementService {
       name: normalizedName || targetForm.name,
       fields: fields,
       fieldCount: fields.length,
-      updatedAt: now
+      updatedAt: now,
     };
 
     this.forms.set(updatedForms);
@@ -200,8 +210,10 @@ export class FormsManagementService {
       ruleCount = sourceRules.length;
     }
 
-    const copiedFields = sourceFields.map((field: any) => JSON.parse(JSON.stringify(field)));
-    
+    const copiedFields = sourceFields.map((field: any) =>
+      JSON.parse(JSON.stringify(field)),
+    );
+
     const copiedForm: SavedForm = {
       id: newFormId,
       name: newName || `Copy of ${sourceForm.name}`,
@@ -210,19 +222,23 @@ export class FormsManagementService {
       fieldCount: fieldCount,
       ruleCount: ruleCount,
       fields: copiedFields,
-      userContext: sourceForm.userContext ? { ...sourceForm.userContext } : undefined
+      userContext: sourceForm.userContext
+        ? { ...sourceForm.userContext }
+        : undefined,
     };
 
-    this.forms.update(forms => [...forms, copiedForm]);
+    this.forms.update((forms) => [...forms, copiedForm]);
     this.saveForms();
 
     return newFormId;
   }
 
   private loadCurrentFormId(): void {
-    const formId = this.storageService.getSessionItem<string>(this.CURRENT_FORM_KEY);
+    const formId = this.storageService.getSessionItem<string>(
+      this.CURRENT_FORM_KEY,
+    );
     if (formId) {
-      const formExists = this.forms().some(form => form.id === formId);
+      const formExists = this.forms().some((form) => form.id === formId);
       if (formExists) {
         this.currentFormId.set(formId);
       } else {
@@ -239,11 +255,15 @@ export class FormsManagementService {
     return `form-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private findForm(formId?: string | null, formName?: string | null): SavedForm | undefined {
+  private findForm(
+    formId?: string | null,
+    formName?: string | null,
+  ): SavedForm | undefined {
     const normalizedName = formName?.trim().toLowerCase();
-    return this.forms().find(form => 
-      (formId && form.id === formId) ||
-      (normalizedName && form.name.trim().toLowerCase() === normalizedName)
+    return this.forms().find(
+      (form) =>
+        (formId && form.id === formId) ||
+        (normalizedName && form.name.trim().toLowerCase() === normalizedName),
     );
   }
 }

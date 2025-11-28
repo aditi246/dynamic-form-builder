@@ -1,5 +1,17 @@
-import { Component, signal, computed, output, effect, input } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  Component,
+  signal,
+  computed,
+  output,
+  effect,
+  input,
+} from '@angular/core';
+import {
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { StorageService } from '../../../shared/services/storage.service';
 import { FormsManagementService } from '../../../shared/services/forms-management.service';
@@ -42,7 +54,13 @@ export interface FormField {
 @Component({
   selector: 'app-fields-step',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, IconComponent, DefaultsComponent, HttpClientModule],
+  imports: [
+    ReactiveFormsModule,
+    CommonModule,
+    IconComponent,
+    DefaultsComponent,
+    HttpClientModule,
+  ],
   templateUrl: './fields-step.html',
 })
 export class FieldsStep {
@@ -50,7 +68,10 @@ export class FieldsStep {
   backStep = output<void>();
   formName = input<string | null>(null);
   displayFormName = computed(
-    () => this.formName()?.trim() || this.formsService.getCurrentFormName() || 'Untitled Form'
+    () =>
+      this.formName()?.trim() ||
+      this.formsService.getCurrentFormName() ||
+      'Untitled Form',
   );
   draggingIndex = signal<number | null>(null);
 
@@ -81,7 +102,10 @@ export class FieldsStep {
   fieldTypes = ['text', 'number', 'checkbox', 'select', 'file'];
 
   predefinedRegex = [
-    { label: 'Email', value: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$' },
+    {
+      label: 'Email',
+      value: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+    },
     { label: 'Phone', value: '^\\+?[1-9]\\d{1,14}$' },
     {
       label: 'URL',
@@ -100,7 +124,7 @@ export class FieldsStep {
   constructor(
     private storageService: StorageService,
     private formsService: FormsManagementService,
-    private http: HttpClient
+    private http: HttpClient,
   ) {
     effect(() => {
       const formId = this.formsService.getCurrentFormId();
@@ -112,7 +136,7 @@ export class FieldsStep {
         this.fields.set([]);
       }
     });
-    
+
     this.fieldForm.get('type')?.valueChanges.subscribe((type) => {
       this.currentType.set(type || 'text');
 
@@ -142,12 +166,17 @@ export class FieldsStep {
       }
 
       const defaultControl = this.fieldForm.get('default');
-      if (type === 'checkbox' && defaultControl && typeof defaultControl.value !== 'boolean') {
+      if (
+        type === 'checkbox' &&
+        defaultControl &&
+        typeof defaultControl.value !== 'boolean'
+      ) {
         defaultControl.patchValue(false as any, { emitEvent: false });
       } else if (
         type === 'number' &&
         defaultControl &&
-        (defaultControl.value === '' || typeof defaultControl.value === 'string')
+        (defaultControl.value === '' ||
+          typeof defaultControl.value === 'string')
       ) {
         defaultControl.patchValue(null, { emitEvent: false });
       } else if (type === 'file' && defaultControl) {
@@ -192,7 +221,9 @@ export class FieldsStep {
 
     // Check initial pattern value and set initial disabled state
     const initialPattern = this.fieldForm.get('pattern')?.value;
-    const initialHasPattern = !!(initialPattern && initialPattern.trim() !== '');
+    const initialHasPattern = !!(
+      initialPattern && initialPattern.trim() !== ''
+    );
     this.hasRegexPattern.set(initialHasPattern);
 
     // Set initial disabled state for min/max if pattern exists and type is text
@@ -215,10 +246,15 @@ export class FieldsStep {
   }
 
   getOptionsArray(): string[] {
-    if (this.currentType() === 'select' && this.fieldForm.value.selectSource === 'api') {
+    if (
+      this.currentType() === 'select' &&
+      this.fieldForm.value.selectSource === 'api'
+    ) {
       const saveStrategy = this.fieldForm.value.apiSaveStrategy || 'value';
       const apiOpts = this.apiPreviewOptions();
-      return apiOpts.map(opt => (saveStrategy === 'label' ? opt.label : String(opt.value)));
+      return apiOpts.map((opt) =>
+        saveStrategy === 'label' ? opt.label : String(opt.value),
+      );
     }
     const optionsValue = this.fieldForm.get('options')?.value || '';
     if (!optionsValue) return [];
@@ -277,7 +313,7 @@ export class FieldsStep {
     }
 
     if (fieldData.type === 'file') {
-      validators.push((control: { value: File[] | null; }) => {
+      validators.push((control: { value: File[] | null }) => {
         const files = control.value as File[] | null;
         const count = Array.isArray(files) ? files.length : 0;
         const errors: any = {};
@@ -285,11 +321,23 @@ export class FieldsStep {
         if (fieldData.required && count === 0) {
           errors.required = true;
         }
-        if (fieldData.validation?.minFiles !== undefined && count < fieldData.validation.minFiles) {
-          errors.minFiles = { minFiles: fieldData.validation.minFiles, actual: count };
+        if (
+          fieldData.validation?.minFiles !== undefined &&
+          count < fieldData.validation.minFiles
+        ) {
+          errors.minFiles = {
+            minFiles: fieldData.validation.minFiles,
+            actual: count,
+          };
         }
-        if (fieldData.validation?.maxFiles !== undefined && count > fieldData.validation.maxFiles) {
-          errors.maxFiles = { maxFiles: fieldData.validation.maxFiles, actual: count };
+        if (
+          fieldData.validation?.maxFiles !== undefined &&
+          count > fieldData.validation.maxFiles
+        ) {
+          errors.maxFiles = {
+            maxFiles: fieldData.validation.maxFiles,
+            actual: count,
+          };
         }
 
         return Object.keys(errors).length ? errors : null;
@@ -299,7 +347,7 @@ export class FieldsStep {
     // Create FormControl with validators
     const control = new FormControl(
       this.getDefaultValue(fieldData),
-      Validators.compose(validators)
+      Validators.compose(validators),
     );
 
     return control;
@@ -342,7 +390,8 @@ export class FieldsStep {
   }
 
   addField() {
-    const hasFormTarget = this.formsService.getCurrentFormId() || this.formName()?.trim();
+    const hasFormTarget =
+      this.formsService.getCurrentFormId() || this.formName()?.trim();
     if (!hasFormTarget) {
       alert('Please select or create a form before adding fields.');
       return;
@@ -351,7 +400,9 @@ export class FieldsStep {
     if (this.fieldForm.valid) {
       const value = this.fieldForm.value;
       // Parse options from double-quoted format
-      const options = value.options ? this.parseQuotedOptions(value.options) : undefined;
+      const options = value.options
+        ? this.parseQuotedOptions(value.options)
+        : undefined;
 
       const minValue = this.toNumberValue(value.min);
       const maxValue = this.toNumberValue(value.max);
@@ -365,7 +416,10 @@ export class FieldsStep {
         type: value.type || 'text',
         required: value.required || false,
         selectSource: value.type === 'select' ? selectSource : undefined,
-        options: value.type === 'select' && selectSource === 'manual' ? options : undefined,
+        options:
+          value.type === 'select' && selectSource === 'manual'
+            ? options
+            : undefined,
         apiOptions:
           value.type === 'select' && selectSource === 'api'
             ? {
@@ -381,19 +435,23 @@ export class FieldsStep {
           value.type === 'checkbox'
             ? Boolean(value.default)
             : value.type === 'number'
-            ? this.toNumberValue(value.default) ?? null
-            : value.type === 'file'
-            ? null
-            : value.default ?? '',
+              ? (this.toNumberValue(value.default) ?? null)
+              : value.type === 'file'
+                ? null
+                : (value.default ?? ''),
         validation: {
           // For text type: only include minLength/maxLength if pattern is not set
-          minLength: value.type === 'text' && !value.pattern ? minValue : undefined,
-          maxLength: value.type === 'text' && !value.pattern ? maxValue : undefined,
+          minLength:
+            value.type === 'text' && !value.pattern ? minValue : undefined,
+          maxLength:
+            value.type === 'text' && !value.pattern ? maxValue : undefined,
           minValue: value.type === 'number' ? minValue : undefined,
           maxValue: value.type === 'number' ? maxValue : undefined,
           step: value.type === 'number' ? step : undefined,
-          pattern: value.type === 'text' ? value.pattern || undefined : undefined,
-          regexType: value.type === 'text' ? value.regexType || undefined : undefined,
+          pattern:
+            value.type === 'text' ? value.pattern || undefined : undefined,
+          regexType:
+            value.type === 'text' ? value.regexType || undefined : undefined,
           minFiles: value.type === 'file' ? minValue : undefined,
           maxFiles: value.type === 'file' ? maxValue : undefined,
         },
@@ -402,7 +460,8 @@ export class FieldsStep {
       const editingIdx = this.editingIndex();
       const normalizedName = fieldData.name.trim().toLowerCase();
       const duplicate = this.fields().some(
-        (f, i) => i !== editingIdx && f.name.trim().toLowerCase() === normalizedName
+        (f, i) =>
+          i !== editingIdx && f.name.trim().toLowerCase() === normalizedName,
       );
       if (duplicate) {
         this.fieldForm.get('name')?.setErrors({ duplicate: true });
@@ -416,7 +475,9 @@ export class FieldsStep {
 
       if (editingIdx !== null) {
         // Update existing field with a fresh FormControl
-        this.fields.update((fields) => fields.map((f, i) => (i === editingIdx ? field : f)));
+        this.fields.update((fields) =>
+          fields.map((f, i) => (i === editingIdx ? field : f)),
+        );
         this.editingIndex.set(null);
       } else {
         // Add new field
@@ -435,10 +496,10 @@ export class FieldsStep {
       field.type === 'checkbox'
         ? Boolean(field.default)
         : field.type === 'number'
-        ? field.default ?? null
-        : field.type === 'file'
-        ? null
-        : field.default ?? '';
+          ? (field.default ?? null)
+          : field.type === 'file'
+            ? null
+            : (field.default ?? '');
     this.fieldForm.patchValue({
       label: field.label,
       name: field.name,
@@ -479,8 +540,8 @@ export class FieldsStep {
       [...fields].sort((a, b) =>
         dir === 'asc'
           ? a.label.localeCompare(b.label)
-          : b.label.localeCompare(a.label)
-      )
+          : b.label.localeCompare(a.label),
+      ),
     );
     this.saveFields();
   }
@@ -537,10 +598,13 @@ export class FieldsStep {
 
     this.http.get(url).subscribe({
       next: (res: any) => {
-        const list = this.extractItems(res, this.fieldForm.value.apiItemsPath || '');
+        const list = this.extractItems(
+          res,
+          this.fieldForm.value.apiItemsPath || '',
+        );
         const mapped = Array.isArray(list)
           ? list
-              .map(item => this.mapOption(item))
+              .map((item) => this.mapOption(item))
               .filter((x): x is { label: string; value: any } => !!x)
           : [];
         if (!mapped.length) {
@@ -552,7 +616,7 @@ export class FieldsStep {
       error: () => {
         this.apiPreviewError.set('Failed to load options');
         this.apiPreviewLoading.set(false);
-      }
+      },
     });
   }
 
@@ -591,17 +655,21 @@ export class FieldsStep {
       const { formValue, ...fieldWithoutFormControl } = field;
       return fieldWithoutFormControl;
     });
-    
+
     let formId = this.formsService.getCurrentFormId();
     let formName = this.formName()?.trim() || null;
-    
+
     if (!formId && !formName) {
       console.warn('No form selected; fields not saved.');
       alert('Please select or create a form before saving fields.');
       return;
     }
-    
-    const saved = this.formsService.saveFormFields(formId, fieldsToSave, formName);
+
+    const saved = this.formsService.saveFormFields(
+      formId,
+      fieldsToSave,
+      formName,
+    );
     if (!saved) {
       console.warn('Form not resolved, fields not saved to forms list');
     }
@@ -609,7 +677,7 @@ export class FieldsStep {
 
   private loadFields(formId?: string | null, formName?: string | null): void {
     const fieldsData = this.formsService.getFormFields(formId, formName);
-    
+
     if (fieldsData && fieldsData.length > 0) {
       // Recreate FormControls for each field
       const fieldsWithControls: FormField[] = fieldsData.map((fieldData) => {
@@ -618,14 +686,16 @@ export class FieldsStep {
       });
       this.fields.set(fieldsWithControls);
     } else {
-      const legacyFields = this.storageService.getItem<Omit<FormField, 'formValue'>[]>(
-        this.STORAGE_KEY
-      );
+      const legacyFields = this.storageService.getItem<
+        Omit<FormField, 'formValue'>[]
+      >(this.STORAGE_KEY);
       if (legacyFields && legacyFields.length > 0) {
-        const fieldsWithControls: FormField[] = legacyFields.map((fieldData) => {
-          const formControl = this.createFormControl(fieldData as FormField);
-          return { ...fieldData, formValue: formControl };
-        });
+        const fieldsWithControls: FormField[] = legacyFields.map(
+          (fieldData) => {
+            const formControl = this.createFormControl(fieldData as FormField);
+            return { ...fieldData, formValue: formControl };
+          },
+        );
         this.fields.set(fieldsWithControls);
         this.saveFields();
         this.storageService.removeItem(this.STORAGE_KEY);

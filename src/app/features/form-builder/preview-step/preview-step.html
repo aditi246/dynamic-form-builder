@@ -2,148 +2,146 @@
   <!-- Voice or AI command Section -->
   <div class="bg-card rounded-md shadow-sm p-6">
     <h2 class="text-lg font-semibold text-text mb-4">Voice or AI command</h2>
-    <app-audio-textarea 
+    <app-audio-textarea
       (textChange)="onAiCommandChange($event)"
-      (fileUpload)="onFileUpload($event)">
+      (fileUpload)="onFileUpload($event)"
+    >
     </app-audio-textarea>
   </div>
 
   <!-- Form Preview Section -->
   <div class="bg-card rounded-md shadow-sm p-6">
     <h2 class="text-lg font-semibold text-text mb-6">Form Preview</h2>
-    
+
     <form [formGroup]="previewForm" class="space-y-6">
-      @for (field of fields(); track field.name) {
-        @if (!isHidden(field.name) && !isContextField(field.name)) {
-        <div>
-          <label class="block text-sm font-medium text-text mb-2">
-            {{ field.label }}
-            @if (field.required) {
-              <span class="text-danger">*</span>
-            }
-          </label>
-          
-          @if (field.type === 'text' || field.type === 'email') {
-            <input 
-              [type]="field.type"
-              [formControlName]="field.name"
-              [placeholder]="'e.g. ' + (field.type === 'email' ? 'john.doe@example.com' : field.label.toLowerCase())"
-              [class.border-danger]="isFieldInvalid(field.name)"
-              [class.border-border]="!isFieldInvalid(field.name)"
-              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
-            @if (isFieldInvalid(field.name)) {
-              <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
-            }
+      @for (field of fields(); track field.name) { @if (!isHidden(field.name) &&
+      !isContextField(field.name)) {
+      <div>
+        <label class="block text-sm font-medium text-text mb-2">
+          {{ field.label }} @if (field.required) {
+          <span class="text-danger">*</span>
           }
-          
-          @else if (field.type === 'number') {
-            <input 
-              type="number"
-              [formControlName]="field.name"
-              [step]="field.validation?.step"
-              [min]="field.validation?.minValue ?? null"
-              [max]="field.validation?.maxValue ?? null "
-              [class.border-danger]="isFieldInvalid(field.name)"
-              [class.border-border]="!isFieldInvalid(field.name)"
-              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card">
-            @if (isFieldInvalid(field.name)) {
-              <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
+        </label>
+
+        @if (field.type === 'text' || field.type === 'email') {
+        <input
+          [type]="field.type"
+          [formControlName]="field.name"
+          [placeholder]="'e.g. ' + (field.type === 'email' ? 'john.doe@example.com' : field.label.toLowerCase())"
+          [class.border-danger]="isFieldInvalid(field.name)"
+          [class.border-border]="!isFieldInvalid(field.name)"
+          class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+        />
+        @if (isFieldInvalid(field.name)) {
+        <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
+        } } @else if (field.type === 'number') {
+        <input
+          type="number"
+          [formControlName]="field.name"
+          [step]="field.validation?.step"
+          [min]="field.validation?.minValue ?? null"
+          [max]="field.validation?.maxValue ?? null "
+          [class.border-danger]="isFieldInvalid(field.name)"
+          [class.border-border]="!isFieldInvalid(field.name)"
+          class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+        />
+        @if (isFieldInvalid(field.name)) {
+        <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
+        } } @else if (field.type === 'select') {
+        <div class="relative">
+          <select
+            [formControlName]="field.name"
+            [class.border-danger]="isFieldInvalid(field.name)"
+            [class.border-border]="!isFieldInvalid(field.name)"
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card appearance-none pr-10"
+          >
+            <option value="">Select {{ field.label.toLowerCase() }}</option>
+            @if (isOptionsLoading(field.name)) {
+            <option disabled>Loading...</option>
+            } @for (option of getOptionsForField(field); track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
             }
-          }
-          
-          @else if (field.type === 'select') {
-            <div class="relative">
-              <select 
-                [formControlName]="field.name"
-                [class.border-danger]="isFieldInvalid(field.name)"
-                [class.border-border]="!isFieldInvalid(field.name)"
-                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card appearance-none pr-10">
-                <option value="">Select {{ field.label.toLowerCase() }}</option>
-                @if (isOptionsLoading(field.name)) {
-                  <option disabled>Loading...</option>
-                }
-                @for (option of getOptionsForField(field); track option.value) {
-                  <option [value]="option.value">{{ option.label }}</option>
-                }
-              </select>
-              <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <app-icon name="chevron-down" class="w-5 h-5 text-muted"></app-icon>
-              </div>
-            </div>
-            @if (getOptionError(field.name)) {
-              <p class="text-sm text-danger mt-1">{{ getOptionError(field.name) }}</p>
-            } @else if (!isOptionsLoading(field.name) && getOptionsForField(field).length === 0) {
-              <p class="text-sm text-muted mt-1">No options available.</p>
-            }
-            <div class="text-right">
-              @if (field.selectSource === 'api') {
-                <button type="button" (click)="refreshOptions(field)" class="text-xs text-primary hover:underline">Refresh options</button>
-              }
-            </div>
-            @if (isFieldInvalid(field.name)) {
-              <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
-            }
-          }
-          
-          @else if (field.type === 'checkbox') {
-            <label class="inline-flex items-center gap-2 text-sm text-text">
-              <input 
-                type="checkbox"
-                [formControlName]="field.name"
-                class="w-4 h-4 text-primary border-border rounded">
-              <span [innerHTML]="field.label"></span>
-            </label>
-            @if (isFieldInvalid(field.name)) {
-              <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
-            }
-          }
-          
-          @else if (field.type === 'textarea') {
-            <textarea 
-              [formControlName]="field.name"
-              rows="4"
-              [placeholder]="'e.g. ' + field.label.toLowerCase()"
-              [class.border-danger]="isFieldInvalid(field.name)"
-              [class.border-border]="!isFieldInvalid(field.name)"
-              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"></textarea>
-            @if (isFieldInvalid(field.name)) {
-              <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
-            }
-          }
-          
-           @else if (field.type === 'file') {
-             <app-file-input
-               [files]="filePreviews()[field.name] || []"
-               [multiple]="true"
-               [accept]="getAcceptForField(field)"
-               [blurryIndex]="blurryWarnings()[field.name] ?? null"
-               [analyzingIndex]="analyzingImages()[field.name] ?? null"
-               (filesAdded)="onFilesAdded(field, $event)"
-               (removeFile)="onRemoveFile(field.name, $event)"
-               (blurryAction)="onBlurryAction(field.name, $event)"
-             ></app-file-input>
-            @if (isFieldInvalid(field.name)) {
-              <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
-            }
+          </select>
+          <div
+            class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
+          >
+            <app-icon name="chevron-down" class="w-5 h-5 text-muted"></app-icon>
+          </div>
+        </div>
+        @if (getOptionError(field.name)) {
+        <p class="text-sm text-danger mt-1">{{ getOptionError(field.name) }}</p>
+        } @else if (!isOptionsLoading(field.name) &&
+        getOptionsForField(field).length === 0) {
+        <p class="text-sm text-muted mt-1">No options available.</p>
+        }
+        <div class="text-right">
+          @if (field.selectSource === 'api') {
+          <button
+            type="button"
+            (click)="refreshOptions(field)"
+            class="text-xs text-primary hover:underline"
+          >
+            Refresh options
+          </button>
           }
         </div>
-        }
-      }
+        @if (isFieldInvalid(field.name)) {
+        <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
+        } } @else if (field.type === 'checkbox') {
+        <label class="inline-flex items-center gap-2 text-sm text-text">
+          <input
+            type="checkbox"
+            [formControlName]="field.name"
+            class="w-4 h-4 text-primary border-border rounded"
+          />
+          <span [innerHTML]="field.label"></span>
+        </label>
+        @if (isFieldInvalid(field.name)) {
+        <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
+        } } @else if (field.type === 'textarea') {
+        <textarea
+          [formControlName]="field.name"
+          rows="4"
+          [placeholder]="'e.g. ' + field.label.toLowerCase()"
+          [class.border-danger]="isFieldInvalid(field.name)"
+          [class.border-border]="!isFieldInvalid(field.name)"
+          class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
+        ></textarea>
+        @if (isFieldInvalid(field.name)) {
+        <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
+        } } @else if (field.type === 'file') {
+        <app-file-input
+          [files]="filePreviews()[field.name] || []"
+          [multiple]="true"
+          [accept]="getAcceptForField(field)"
+          [blurryIndex]="blurryWarnings()[field.name] ?? null"
+          [analyzingIndex]="analyzingImages()[field.name] ?? null"
+          (filesAdded)="onFilesAdded(field, $event)"
+          (removeFile)="onRemoveFile(field.name, $event)"
+          (blurryAction)="onBlurryAction(field.name, $event)"
+        ></app-file-input>
+        @if (isFieldInvalid(field.name)) {
+        <p class="text-sm text-danger mt-1">{{ getFieldError(field.name) }}</p>
+        } }
+      </div>
+      } }
     </form>
   </div>
 
   <!-- Navigation Buttons -->
   <div class="flex justify-between">
-    <button 
+    <button
       type="button"
       (click)="onBack()"
-      class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium">
+      class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium"
+    >
       Back
     </button>
-    <button 
+    <button
       type="button"
       (click)="onSubmit()"
-      class="px-6 py-2 bg-success text-white rounded-md hover:opacity-90 font-medium">
+      class="px-6 py-2 bg-success text-white rounded-md hover:opacity-90 font-medium"
+    >
       Submit
     </button>
   </div>

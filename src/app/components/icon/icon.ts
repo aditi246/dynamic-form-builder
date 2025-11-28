@@ -5,10 +5,9 @@ import { CommonModule } from '@angular/common';
   selector: 'app-icon',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './icon.html'
+  templateUrl: './icon.html',
 })
 export class IconComponent {
   name = input.required<string>();
   class = input<string>('w-5 h-5');
 }
-

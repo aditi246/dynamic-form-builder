@@ -29,7 +29,15 @@ export type RuleAction =
   | {
       type: 'enforce-comparison';
       targetField: string;
-      comparator: '<' | '<=' | '>' | '>=' | '==' | '!=' | 'contains' | 'not-contains';
+      comparator:
+        | '<'
+        | '<='
+        | '>'
+        | '>='
+        | '=='
+        | '!='
+        | 'contains'
+        | 'not-contains';
       valueSource: 'static' | 'field';
       value?: number;
       otherField?: string;
@@ -46,20 +54,20 @@ export interface CustomRule {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class FormConfigService {
   private get STORAGE_KEY(): string {
     const formId = this.formsService.getCurrentFormId();
     return formId ? `form-builder-rules-${formId}` : 'form-builder-rules';
   }
-  
+
   rules = signal<CustomRule[]>([]);
   fields = signal<FormField[]>([]);
 
   constructor(
     private formsService: FormsManagementService,
-    private storageService: StorageService
+    private storageService: StorageService,
   ) {
     effect(() => {
       const formId = this.formsService.getCurrentFormId();
@@ -73,20 +81,18 @@ export class FormConfigService {
   }
 
   addRule(rule: CustomRule): void {
-    this.rules.update(rules => [...rules, rule]);
+    this.rules.update((rules) => [...rules, rule]);
     this.saveRules();
     this.updateFormRuleCount();
   }
 
   updateRule(id: string, rule: CustomRule): void {
-    this.rules.update(rules => 
-      rules.map(r => r.id === id ? rule : r)
-    );
+    this.rules.update((rules) => rules.map((r) => (r.id === id ? rule : r)));
     this.saveRules();
   }
 
   deleteRule(id: string): void {
-    this.rules.update(rules => rules.filter(r => r.id !== id));
+    this.rules.update((rules) => rules.filter((r) => r.id !== id));
     this.saveRules();
     this.updateFormRuleCount();
   }
@@ -108,7 +114,9 @@ export class FormConfigService {
     const stored = this.storageService.getItem<CustomRule[]>(this.STORAGE_KEY);
     if (stored) {
       const safeRules = Array.isArray(stored)
-        ? stored.filter((rule: any) => rule && rule.action && rule.conditions !== undefined)
+        ? stored.filter(
+            (rule: any) => rule && rule.action && rule.conditions !== undefined,
+          )
         : [];
       this.rules.set(safeRules);
     } else {
@@ -120,7 +128,7 @@ export class FormConfigService {
     const formId = this.formsService.getCurrentFormId();
     if (formId) {
       this.formsService.updateForm(formId, {
-        ruleCount: this.rules().length
+        ruleCount: this.rules().length,
       });
     }
   }

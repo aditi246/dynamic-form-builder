@@ -2,86 +2,110 @@
   <div>
     <h2 class="text-2xl font-semibold text-text mb-2">Rules & Dynamic Logic</h2>
     <p class="text-muted">
-      Build conditional validations and visibility rules that react to other field values (e.g. hide License Expiry when "License Unlimited" is true or enforce expiry days by store type).
+      Build conditional validations and visibility rules that react to other
+      field values (e.g. hide License Expiry when "License Unlimited" is true or
+      enforce expiry days by store type).
     </p>
   </div>
 
   <div class="flex gap-6 flex-1">
     <!-- Existing rules (left, 60%) -->
-    <div class="w-[60%] bg-card rounded-md shadow-sm p-6 flex flex-col overflow-hidden">
+    <div
+      class="w-[60%] bg-card rounded-md shadow-sm p-6 flex flex-col overflow-hidden"
+    >
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-lg font-semibold text-text">Existing rules (grouped by target)</h3>
-          <p class="text-sm text-muted">All rules attached to the same target field stay together.</p>
+          <h3 class="text-lg font-semibold text-text">
+            Existing rules (grouped by target)
+          </h3>
+          <p class="text-sm text-muted">
+            All rules attached to the same target field stay together.
+          </p>
         </div>
       </div>
 
       @if (rules().length === 0) {
-        <div class="text-center py-12 text-muted flex-1 flex items-center justify-center">
-          <p>No rules yet. Add a rule to wire up conditional validation and visibility.</p>
-        </div>
+      <div
+        class="text-center py-12 text-muted flex-1 flex items-center justify-center"
+      >
+        <p>
+          No rules yet. Add a rule to wire up conditional validation and
+          visibility.
+        </p>
+      </div>
       } @else {
-        <div class="space-y-4 flex-1 overflow-auto pr-1">
-          @for (group of groupedRules(); track group.targetField) {
-            <div class="border border-border rounded-md">
-              <div class="flex items-center justify-between px-4 py-3 bg-bg border-b border-border">
-                <div>
-                  <p class="text-sm font-semibold text-text">{{ getFieldLabel(group.targetField) }}</p>
-                  <p class="text-xs text-muted">{{ group.rules.length }} rule(s)</p>
-                </div>
+      <div class="space-y-4 flex-1 overflow-auto pr-1">
+        @for (group of groupedRules(); track group.targetField) {
+        <div class="border border-border rounded-md">
+          <div
+            class="flex items-center justify-between px-4 py-3 bg-bg border-b border-border"
+          >
+            <div>
+              <p class="text-sm font-semibold text-text">
+                {{ getFieldLabel(group.targetField) }}
+              </p>
+              <p class="text-xs text-muted">{{ group.rules.length }} rule(s)</p>
+            </div>
+          </div>
+          <div class="divide-y divide-border">
+            @for (rule of group.rules; track rule.id) {
+            <div class="flex items-start justify-between px-4 py-3">
+              <div class="space-y-1">
+                <p class="text-sm font-semibold text-text">{{ rule.name }}</p>
+                <p class="text-sm text-muted">{{ formatRule(rule) }}</p>
               </div>
-              <div class="divide-y divide-border">
-                @for (rule of group.rules; track rule.id) {
-                  <div class="flex items-start justify-between px-4 py-3">
-                    <div class="space-y-1">
-                      <p class="text-sm font-semibold text-text">{{ rule.name }}</p>
-                      <p class="text-sm text-muted">{{ formatRule(rule) }}</p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                      <button
-                        (click)="editRule(rule)"
-                        class="text-muted hover:text-primary transition-colors"
-                      >
-                        <app-icon name="edit" class="w-5 h-5"></app-icon>
-                      </button>
-                      <button
-                        (click)="deleteRule(rule.id)"
-                        class="text-muted hover:text-danger transition-colors"
-                      >
-                        <app-icon name="delete" class="w-5 h-5"></app-icon>
-                      </button>
-                    </div>
-                  </div>
-                }
+              <div class="flex items-center gap-3">
+                <button
+                  (click)="editRule(rule)"
+                  class="text-muted hover:text-primary transition-colors"
+                >
+                  <app-icon name="edit" class="w-5 h-5"></app-icon>
+                </button>
+                <button
+                  (click)="deleteRule(rule.id)"
+                  class="text-muted hover:text-danger transition-colors"
+                >
+                  <app-icon name="delete" class="w-5 h-5"></app-icon>
+                </button>
               </div>
             </div>
-          }
+            }
+          </div>
         </div>
+        }
+      </div>
       }
     </div>
 
     <!-- Rule creation (right, 40%) -->
-    <form [formGroup]="ruleForm" class="w-[40%] bg-card rounded-md shadow-sm p-6 border border-border space-y-6 h-fit md:h-full md:max-h-full flex flex-col">
+    <form
+      [formGroup]="ruleForm"
+      class="w-[40%] bg-card rounded-md shadow-sm p-6 border border-border space-y-6 h-fit md:h-full md:max-h-full flex flex-col"
+    >
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-lg font-semibold text-text">Compose a rule</h3>
-          <p class="text-sm text-muted">Stack conditions, then choose what happens to the target field.</p>
+          <p class="text-sm text-muted">
+            Stack conditions, then choose what happens to the target field.
+          </p>
         </div>
         @if (editingRuleId()) {
-          <button
-            type="button"
-            (click)="cancelEditing()"
-            class="px-3 py-2 border border-border text-text rounded-md hover:bg-bg text-sm"
-          >
-            Cancel edit
-          </button>
+        <button
+          type="button"
+          (click)="cancelEditing()"
+          class="px-3 py-2 border border-border text-text rounded-md hover:bg-bg text-sm"
+        >
+          Cancel edit
+        </button>
         }
       </div>
 
       <div class="grid md:grid-cols-2 gap-6">
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-text mb-2">Rule name</label>
+            <label class="block text-sm font-medium text-text mb-2"
+              >Rule name</label
+            >
             <input
               type="text"
               formControlName="name"
@@ -93,10 +117,16 @@
           <div class="border border-border rounded-md p-4">
             <div class="flex items-center justify-between mb-3">
               <div>
-                <p class="text-sm font-semibold text-text">When these conditions are true</p>
-                <p class="text-xs text-muted">All conditions are combined with AND.</p>
+                <p class="text-sm font-semibold text-text">
+                  When these conditions are true
+                </p>
+                <p class="text-xs text-muted">
+                  All conditions are combined with AND.
+                </p>
               </div>
-              <div class="text-xs text-muted">{{ conditions().length }} added</div>
+              <div class="text-xs text-muted">
+                {{ conditions().length }} added
+              </div>
             </div>
 
             <div [formGroup]="conditionDraft" class="grid grid-cols-3 gap-3">
@@ -107,12 +137,14 @@
                 <option value="">Select field</option>
                 <optgroup label="User data">
                   @for (ctx of userContextEntries(); track ctx.key) {
-                    <option [value]="ctx.key">{{ ctx.displayName || ctx.key }}</option>
+                  <option [value]="ctx.key">
+                    {{ ctx.displayName || ctx.key }}
+                  </option>
                   }
                 </optgroup>
                 <optgroup label="Form fields">
                   @for (field of fields(); track field.name) {
-                    <option [value]="field.name">{{ field.label }}</option>
+                  <option [value]="field.name">{{ field.label }}</option>
                   }
                 </optgroup>
               </select>
@@ -122,37 +154,43 @@
                 class="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
               >
                 @for (op of conditionOperators; track op.value) {
-                  <option [value]="op.value">{{ op.label }}</option>
+                <option [value]="op.value">{{ op.label }}</option>
                 }
               </select>
 
               @if (isSelectField(conditionDraft.value.field || '')) {
-                <div class="space-y-1">
-                  <select
-                    formControlName="multiValues"
-                    multiple
-                    class="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card h-full"
-                  >
-                    @if (isOptionsLoading(conditionDraft.value.field || '')) {
-                      <option disabled>Loading...</option>
-                    }
-                    @for (opt of getSelectOptions(conditionDraft.value.field || ''); track opt) {
-                      <option [value]="opt">{{ opt }}</option>
-                    }
-                  </select>
-                  @if (getOptionError(conditionDraft.value.field || '')) {
-                    <p class="text-xs text-danger">{{ getOptionError(conditionDraft.value.field || '') }}</p>
-                  } @else if (!isOptionsLoading(conditionDraft.value.field || '') && getSelectOptions(conditionDraft.value.field || '').length === 0) {
-                    <p class="text-xs text-muted">No options available for this field.</p>
+              <div class="space-y-1">
+                <select
+                  formControlName="multiValues"
+                  multiple
+                  class="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card h-full"
+                >
+                  @if (isOptionsLoading(conditionDraft.value.field || '')) {
+                  <option disabled>Loading...</option>
+                  } @for (opt of getSelectOptions(conditionDraft.value.field ||
+                  ''); track opt) {
+                  <option [value]="opt">{{ opt }}</option>
                   }
-                </div>
+                </select>
+                @if (getOptionError(conditionDraft.value.field || '')) {
+                <p class="text-xs text-danger">
+                  {{ getOptionError(conditionDraft.value.field || '') }}
+                </p>
+                } @else if (!isOptionsLoading(conditionDraft.value.field || '')
+                && getSelectOptions(conditionDraft.value.field || '').length ===
+                0) {
+                <p class="text-xs text-muted">
+                  No options available for this field.
+                </p>
+                }
+              </div>
               } @else {
-                <input
-                  type="text"
-                  formControlName="value"
-                  placeholder="Value (skip for is true/false)"
-                  class="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-                />
+              <input
+                type="text"
+                formControlName="value"
+                placeholder="Value (skip for is true/false)"
+                class="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              />
               }
             </div>
 
@@ -168,222 +206,274 @@
             </div>
 
             @if (conditions().length > 0) {
-              <div class="mt-3 space-y-2">
-                @for (condition of conditions(); track condition.field + condition.operator + condition.value) {
-                  <div class="flex items-center justify-between px-3 py-2 bg-bg rounded-md border border-border">
-                    <p class="text-sm text-text">{{ conditionText(condition) }}</p>
-                    <button
-                      type="button"
-                      (click)="removeCondition($index)"
-                      class="text-muted hover:text-danger transition-colors"
-                    >
-                      <app-icon name="delete" class="w-4 h-4"></app-icon>
-                    </button>
-                  </div>
-                }
+            <div class="mt-3 space-y-2">
+              @for (condition of conditions(); track condition.field +
+              condition.operator + condition.value) {
+              <div
+                class="flex items-center justify-between px-3 py-2 bg-bg rounded-md border border-border"
+              >
+                <p class="text-sm text-text">{{ conditionText(condition) }}</p>
+                <button
+                  type="button"
+                  (click)="removeCondition($index)"
+                  class="text-muted hover:text-danger transition-colors"
+                >
+                  <app-icon name="delete" class="w-4 h-4"></app-icon>
+                </button>
               </div>
+              }
+            </div>
             }
           </div>
         </div>
 
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-text mb-2">Target field</label>
+            <label class="block text-sm font-medium text-text mb-2"
+              >Target field</label
+            >
             <select
               formControlName="targetField"
               class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
             >
               <option value="">Select target field</option>
               @for (field of fields(); track field.name) {
-                <option [value]="field.name">{{ field.label }}</option>
+              <option [value]="field.name">{{ field.label }}</option>
               }
             </select>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-text mb-2">Action</label>
+            <label class="block text-sm font-medium text-text mb-2"
+              >Action</label
+            >
             <div
               class="grid gap-3 mb-4"
               [class.grid-cols-3]="isTargetSelect()"
               [class.grid-cols-2]="!isTargetSelect()"
             >
-              <label class="flex items-center gap-2 px-3 py-2 border border-border rounded-md cursor-pointer">
-                <input type="radio" formControlName="actionType" value="validation" />
+              <label
+                class="flex items-center gap-2 px-3 py-2 border border-border rounded-md cursor-pointer"
+              >
+                <input
+                  type="radio"
+                  formControlName="actionType"
+                  value="validation"
+                />
                 <span class="text-sm text-text">Add validation</span>
               </label>
-              <label class="flex items-center gap-2 px-3 py-2 border border-border rounded-md cursor-pointer">
-                <input type="radio" formControlName="actionType" value="visibility" />
+              <label
+                class="flex items-center gap-2 px-3 py-2 border border-border rounded-md cursor-pointer"
+              >
+                <input
+                  type="radio"
+                  formControlName="actionType"
+                  value="visibility"
+                />
                 <span class="text-sm text-text">Toggle visibility</span>
               </label>
               @if (isTargetSelect()) {
-                <label class="flex items-center gap-2 px-3 py-2 border border-border rounded-md cursor-pointer">
-                  <input type="radio" formControlName="actionType" value="options" />
-                  <span class="text-sm text-text">Hide options</span>
-                </label>
+              <label
+                class="flex items-center gap-2 px-3 py-2 border border-border rounded-md cursor-pointer"
+              >
+                <input
+                  type="radio"
+                  formControlName="actionType"
+                  value="options"
+                />
+                <span class="text-sm text-text">Hide options</span>
+              </label>
               }
             </div>
 
             @if (isValidationAction()) {
-              <div class="space-y-3 border border-border rounded-md p-4">
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label class="block text-sm font-medium text-text mb-2">Comparator</label>
-                    <select
-                      formControlName="comparator"
-                      class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-                    >
-                      @for (comp of getComparatorOptions(); track comp.value) {
-                        <option [value]="comp.value">{{ comp.label }}</option>
-                      }
-                    </select>
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-text mb-2">Compare against</label>
-                    <select
-                      formControlName="thresholdType"
-                      class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-                    >
-                      <option value="static">Static value</option>
-                      <option value="field">Another field</option>
-                    </select>
-                    <p class="text-xs text-muted mt-1">
-                      Static: compare with a fixed value. Another field: compare against another field's live value.
-                    </p>
-                  </div>
-                </div>
-
-              @if (ruleForm.value.thresholdType === 'field') {
+            <div class="space-y-3 border border-border rounded-md p-4">
+              <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-sm font-medium text-text mb-2">Comparison field</label>
+                  <label class="block text-sm font-medium text-text mb-2"
+                    >Comparator</label
+                  >
                   <select
-                    formControlName="thresholdField"
+                    formControlName="comparator"
                     class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
                   >
-                    <option value="">Select field</option>
-                    @for (field of targetFields(); track field.name) {
-                      <option [value]="field.name">{{ field.label }}</option>
+                    @for (comp of getComparatorOptions(); track comp.value) {
+                    <option [value]="comp.value">{{ comp.label }}</option>
                     }
                   </select>
-                  @if (isTargetNumericOrDate()) {
-                    <div class="mt-2">
-                      <label class="block text-xs font-medium text-text mb-1">Offset (adds to comparison field)</label>
-                      <input
-                        type="number"
-                        formControlName="thresholdOffset"
-                        placeholder="e.g. 15"
-                        class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-                      />
-                    </div>
-                  }
                 </div>
-              } @else {
-                  @if (isTargetNumericOrDate()) {
-                    <div>
-                      <label class="block text-sm font-medium text-text mb-2">Value</label>
-                      <input
-                        [type]="getTargetField()?.type === 'date' ? 'date' : 'number'"
-                        formControlName="thresholdValue"
-                        placeholder="e.g. 30"
-                        class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-                      />
-                    </div>
-                  } @else if (getTargetField()?.type === 'select') {
-                    <div>
-                      <label class="block text-sm font-medium text-text mb-2">Select value</label>
-                      <select
-                        formControlName="thresholdValue"
-                        class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-                      >
-                        <option value="">Choose option</option>
-                        @for (opt of getStaticValueOptionsForTarget(); track opt.value) {
-                          <option [value]="opt.value">{{ opt.label }}</option>
-                        }
-                      </select>
-                      @if (isOptionsLoading(getTargetField()?.name || '')) {
-                        <p class="text-xs text-muted mt-1">Loading options...</p>
-                      } @else if (getStaticValueOptionsForTarget().length === 0) {
-                        <p class="text-xs text-muted mt-1">No options available for this select.</p>
-                      }
-                    </div>
-                  } @else {
-                    <div>
-                      <label class="block text-sm font-medium text-text mb-2">Value</label>
-                      <input
-                        type="text"
-                        formControlName="thresholdValue"
-                        placeholder="Enter value"
-                        class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-                      />
-                    </div>
-                  }
-                }
 
                 <div>
-                  <label class="block text-sm font-medium text-text mb-2">Error message</label>
+                  <label class="block text-sm font-medium text-text mb-2"
+                    >Compare against</label
+                  >
+                  <select
+                    formControlName="thresholdType"
+                    class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+                  >
+                    <option value="static">Static value</option>
+                    <option value="field">Another field</option>
+                  </select>
+                  <p class="text-xs text-muted mt-1">
+                    Static: compare with a fixed value. Another field: compare
+                    against another field's live value.
+                  </p>
+                </div>
+              </div>
+
+              @if (ruleForm.value.thresholdType === 'field') {
+              <div>
+                <label class="block text-sm font-medium text-text mb-2"
+                  >Comparison field</label
+                >
+                <select
+                  formControlName="thresholdField"
+                  class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+                >
+                  <option value="">Select field</option>
+                  @for (field of targetFields(); track field.name) {
+                  <option [value]="field.name">{{ field.label }}</option>
+                  }
+                </select>
+                @if (isTargetNumericOrDate()) {
+                <div class="mt-2">
+                  <label class="block text-xs font-medium text-text mb-1"
+                    >Offset (adds to comparison field)</label
+                  >
                   <input
-                    type="text"
-                    formControlName="errorMessage"
-                    placeholder="Shown when validation fails"
+                    type="number"
+                    formControlName="thresholdOffset"
+                    placeholder="e.g. 15"
                     class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
                   />
                 </div>
+                }
               </div>
-            } @else if (ruleForm.value.actionType === 'options') {
-              <div class="space-y-3 border border-border rounded-md p-4">
-                <p class="text-sm text-text">Hide specific options for the target field.</p>
+              } @else { @if (isTargetNumericOrDate()) {
+              <div>
+                <label class="block text-sm font-medium text-text mb-2"
+                  >Value</label
+                >
+                <input
+                  [type]="getTargetField()?.type === 'date' ? 'date' : 'number'"
+                  formControlName="thresholdValue"
+                  placeholder="e.g. 30"
+                  class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+                />
+              </div>
+              } @else if (getTargetField()?.type === 'select') {
+              <div>
+                <label class="block text-sm font-medium text-text mb-2"
+                  >Select value</label
+                >
                 <select
-                  formControlName="hideOptionValues"
-                  multiple
+                  formControlName="thresholdValue"
                   class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
                 >
-                @for (opt of getStaticValueOptionsForTarget(); track opt.value) {
+                  <option value="">Choose option</option>
+                  @for (opt of getStaticValueOptionsForTarget(); track
+                  opt.value) {
                   <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+                @if (isOptionsLoading(getTargetField()?.name || '')) {
+                <p class="text-xs text-muted mt-1">Loading options...</p>
+                } @else if (getStaticValueOptionsForTarget().length === 0) {
+                <p class="text-xs text-muted mt-1">
+                  No options available for this select.
+                </p>
+                }
+              </div>
+              } @else {
+              <div>
+                <label class="block text-sm font-medium text-text mb-2"
+                  >Value</label
+                >
+                <input
+                  type="text"
+                  formControlName="thresholdValue"
+                  placeholder="Enter value"
+                  class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+                />
+              </div>
+              } }
+
+              <div>
+                <label class="block text-sm font-medium text-text mb-2"
+                  >Error message</label
+                >
+                <input
+                  type="text"
+                  formControlName="errorMessage"
+                  placeholder="Shown when validation fails"
+                  class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+                />
+              </div>
+            </div>
+            } @else if (ruleForm.value.actionType === 'options') {
+            <div class="space-y-3 border border-border rounded-md p-4">
+              <p class="text-sm text-text">
+                Hide specific options for the target field.
+              </p>
+              <select
+                formControlName="hideOptionValues"
+                multiple
+                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              >
+                @for (opt of getStaticValueOptionsForTarget(); track opt.value)
+                {
+                <option [value]="opt.value">{{ opt.label }}</option>
                 }
               </select>
               @if (getStaticValueOptionsForTarget().length === 0) {
-                <p class="text-xs text-muted">No options available for this target. Select a select-type target field.</p>
-                }
-                @if (ruleForm.value.hideOptionValues?.length) {
-                  <div class="flex flex-wrap gap-2 mt-2">
-                    @for (optValue of ruleForm.value.hideOptionValues; track optValue) {
-                      <span class="px-2 py-1 bg-card border border-border rounded text-xs text-text">
-                        {{ getOptionLabel(optValue) }}
-                      </span>
-                    }
-                  </div>
+              <p class="text-xs text-muted">
+                No options available for this target. Select a select-type
+                target field.
+              </p>
+              } @if (ruleForm.value.hideOptionValues?.length) {
+              <div class="flex flex-wrap gap-2 mt-2">
+                @for (optValue of ruleForm.value.hideOptionValues; track
+                optValue) {
+                <span
+                  class="px-2 py-1 bg-card border border-border rounded text-xs text-text"
+                >
+                  {{ getOptionLabel(optValue) }}
+                </span>
                 }
               </div>
+              }
+            </div>
             } @else {
-              <div class="space-y-3 border border-border rounded-md p-4">
-                <label class="flex items-center gap-2 text-sm text-text">
-                  <input
-                    type="radio"
-                    formControlName="visibilityBehavior"
-                    value="hide"
-                  />
-                  <span>Hide the target field when conditions match</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm text-text">
-                  <input
-                    type="radio"
-                    formControlName="visibilityBehavior"
-                    value="show"
-                  />
-                  <span>Show the target field when conditions match</span>
-                </label>
-                <p class="text-xs text-muted">
-                  Hidden fields are automatically disabled so they do not block form submission.
-                </p>
-              </div>
+            <div class="space-y-3 border border-border rounded-md p-4">
+              <label class="flex items-center gap-2 text-sm text-text">
+                <input
+                  type="radio"
+                  formControlName="visibilityBehavior"
+                  value="hide"
+                />
+                <span>Hide the target field when conditions match</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm text-text">
+                <input
+                  type="radio"
+                  formControlName="visibilityBehavior"
+                  value="show"
+                />
+                <span>Show the target field when conditions match</span>
+              </label>
+              <p class="text-xs text-muted">
+                Hidden fields are automatically disabled so they do not block
+                form submission.
+              </p>
+            </div>
             }
           </div>
 
-        <div class="flex justify-end gap-3">
-          <button
-            type="button"
-            (click)="resetForms()"
-            class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium"
+          <div class="flex justify-end gap-3">
+            <button
+              type="button"
+              (click)="resetForms()"
+              class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium"
             >
               Reset
             </button>
@@ -409,16 +499,18 @@
 
   <!-- Navigation Buttons -->
   <div class="flex justify-between">
-    <button 
+    <button
       type="button"
       (click)="backStep.emit()"
-      class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium">
+      class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium"
+    >
       Back
     </button>
-    <button 
+    <button
       type="button"
       (click)="nextStep.emit()"
-      class="px-6 py-2 bg-success text-white rounded-md hover:opacity-90 font-medium">
+      class="px-6 py-2 bg-success text-white rounded-md hover:opacity-90 font-medium"
+    >
       Next
     </button>
   </div>

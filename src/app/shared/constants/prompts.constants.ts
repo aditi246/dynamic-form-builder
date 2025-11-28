@@ -1,5 +1,6 @@
 export const PROMPTS = {
-  SYSTEM_MESSAGE: 'You are an expert form optimization AI assistant. Provide concise, accurate responses in the requested format.',
+  SYSTEM_MESSAGE:
+    'You are an expert form optimization AI assistant. Provide concise, accurate responses in the requested format.',
 
   FORM_FILL_INSTRUCTION: `You are a helpful assistant that fills out forms based on user instructions.
 
@@ -58,6 +59,5 @@ For checkboxes, use true/false. For numbers, use numeric values. For text/select
 
 Example format: {"firstName": "John", "lastName": "Doe", "age": 30, "isActive": true}
 
-Return only the JSON object, no additional text.`
+Return only the JSON object, no additional text.`,
 };
-

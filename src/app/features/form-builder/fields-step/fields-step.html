@@ -5,7 +5,9 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h2 class="text-lg font-semibold text-text">Form Fields</h2>
-          <p class="text-sm text-muted">Current form: {{ displayFormName() }}</p>
+          <p class="text-sm text-muted">
+            Current form: {{ displayFormName() }}
+          </p>
         </div>
         <div class="flex items-center gap-2">
           <button
@@ -36,7 +38,8 @@
                   ></app-icon>
                 </button>
               </th>
-              @for (column of ['Name', 'Type', 'Required', 'Default Value', 'Actions']; track column) {
+              @for (column of ['Name', 'Type', 'Required', 'Default Value',
+              'Actions']; track column) {
               <th class="text-left py-3 px-4 text-sm font-medium text-text">
                 {{ column }}
               </th>
@@ -47,7 +50,8 @@
             @if (fields().length === 0) {
             <tr>
               <td colspan="6" class="py-6 px-4 text-center text-sm text-muted">
-                No fields added yet. Click “Add Field” to start building your form.
+                No fields added yet. Click “Add Field” to start building your
+                form.
               </td>
             </tr>
             } @for (field of fields(); track field.name; let i = $index) {
@@ -157,7 +161,9 @@
             >
             </app-defaults>
             } @else {
-            <p class="text-sm text-muted">File uploads do not support default values.</p>
+            <p class="text-sm text-muted">
+              File uploads do not support default values.
+            </p>
             }
           </div>
 

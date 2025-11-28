@@ -8,16 +8,17 @@
   <!-- Tabs Navigation -->
   <nav class="bg-card border-b border-border">
     <div class="px-6 flex gap-8">
-      <button 
+      <button
         (click)="goToStep('forms')"
         class="py-4 px-2 border-b-2 font-medium transition-colors"
         [class.border-primary]="currentStep() === 'forms'"
         [class.text-primary]="currentStep() === 'forms'"
         [class.border-transparent]="currentStep() !== 'forms'"
-        [class.text-muted]="currentStep() !== 'forms'">
+        [class.text-muted]="currentStep() !== 'forms'"
+      >
         Forms
       </button>
-      <button 
+      <button
         (click)="goToStep('fields')"
         [disabled]="!hasActiveForm()"
         class="py-4 px-2 border-b-2 font-medium transition-colors"
@@ -26,10 +27,11 @@
         [class.border-transparent]="currentStep() !== 'fields'"
         [class.text-muted]="currentStep() !== 'fields' || !hasActiveForm()"
         [class.opacity-50]="!hasActiveForm()"
-        [class.cursor-not-allowed]="!hasActiveForm()">
+        [class.cursor-not-allowed]="!hasActiveForm()"
+      >
         Builder
       </button>
-      <button 
+      <button
         (click)="goToStep('rules')"
         [disabled]="!hasActiveForm()"
         class="py-4 px-2 border-b-2 font-medium transition-colors"
@@ -38,10 +40,11 @@
         [class.border-transparent]="currentStep() !== 'rules'"
         [class.text-muted]="currentStep() !== 'rules' || !hasActiveForm()"
         [class.opacity-50]="!hasActiveForm()"
-        [class.cursor-not-allowed]="!hasActiveForm()">
+        [class.cursor-not-allowed]="!hasActiveForm()"
+      >
         Rules
       </button>
-      <button 
+      <button
         (click)="goToStep('preview')"
         [disabled]="!hasActiveForm()"
         class="py-4 px-2 border-b-2 font-medium transition-colors"
@@ -50,7 +53,8 @@
         [class.border-transparent]="currentStep() !== 'preview'"
         [class.text-muted]="currentStep() !== 'preview' || !hasActiveForm()"
         [class.opacity-50]="!hasActiveForm()"
-        [class.cursor-not-allowed]="!hasActiveForm()">
+        [class.cursor-not-allowed]="!hasActiveForm()"
+      >
         Preview
       </button>
     </div>
@@ -58,19 +62,27 @@
 
   <main class="p-6">
     @if (currentStep() === 'forms') {
-      <app-forms-step 
-        (nextStep)="onNextStep()" 
-        (backStep)="onBackStep()"
-        (formSelected)="onFormSelected($event)"></app-forms-step>
+    <app-forms-step
+      (nextStep)="onNextStep()"
+      (backStep)="onBackStep()"
+      (formSelected)="onFormSelected($event)"
+    ></app-forms-step>
     } @else if (currentStep() === 'fields') {
-      <app-fields-step 
-        [formName]="formsService.getCurrentFormName()"
-        (nextStep)="onNextStep()" 
-        (backStep)="onBackStep()"></app-fields-step>
+    <app-fields-step
+      [formName]="formsService.getCurrentFormName()"
+      (nextStep)="onNextStep()"
+      (backStep)="onBackStep()"
+    ></app-fields-step>
     } @else if (currentStep() === 'rules') {
-      <app-rules-step (nextStep)="onNextStep()" (backStep)="onBackStep()"></app-rules-step>
+    <app-rules-step
+      (nextStep)="onNextStep()"
+      (backStep)="onBackStep()"
+    ></app-rules-step>
     } @else if (currentStep() === 'preview') {
-      <app-preview-step (nextStep)="onNextStep()" (backStep)="onBackStep()"></app-preview-step>
+    <app-preview-step
+      (nextStep)="onNextStep()"
+      (backStep)="onBackStep()"
+    ></app-preview-step>
     }
   </main>
 </div>

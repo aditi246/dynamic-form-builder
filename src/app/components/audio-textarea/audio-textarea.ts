@@ -11,14 +11,16 @@ import { IconComponent } from '../icon/icon';
 })
 export class AudioTextareaComponent implements OnInit, OnDestroy {
   textChange = output<string>();
+  fileUpload = output<File>();
 
-  textValue: string = '';
+  textValue = signal<string>('');
   finalText: string = '';
   isRecording = signal<boolean>(false);
   isProcessing = signal<boolean>(false);
+  selectedFile = signal<File | null>(null);
   recognition: any = null;
   
-  readonly placeholder = 'e.g., \'Fill out the form for a new user named John Doe...\'';
+  readonly placeholder = 'e.g., \'Fill out the form for a new user named Aditi...\'';
   readonly rows = 4;
 
   ngOnInit() {
@@ -50,8 +52,7 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
           }
 
           // Update text value: final text + current interim
-          this.textValue = this.finalText + interimTranscript;
-          this.textChange.emit(this.textValue);
+          this.textValue.set(this.finalText + interimTranscript);
         };
 
         this.recognition.onerror = (event: any) => {
@@ -63,7 +64,7 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
         this.recognition.onend = () => {
           this.isRecording.set(false);
           this.isProcessing.set(false);
-          this.textChange.emit(this.textValue);
+          this.textValue.set(this.finalText);
         };
       }
     }
@@ -85,7 +86,7 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
       this.isRecording.set(true);
       this.isProcessing.set(true);
       // Reset final text when starting new recording
-      this.textValue = '';
+      this.textValue.set('');
       this.finalText = '';
       this.recognition.start();
     } catch (error) {
@@ -105,17 +106,26 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
   }
 
   onTextChange(value: string) {
-    this.textValue = value;
-    this.textChange.emit(value);
+    this.textValue.set(value);
+    this.finalText = value;
   }
 
   fillWithAI() {
-    // Placeholder for AI functionality
-    this.isProcessing.set(true);
-    // Simulate AI processing
-    setTimeout(() => {
-      this.isProcessing.set(false);
-    }, 2000);
+    this.textChange.emit(this.textValue());
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      this.selectedFile.set(file);
+      this.fileUpload.emit(file);
+      input.value = '';
+    }
+  }
+
+  removeFile() {
+    this.selectedFile.set(null);
   }
 }
 

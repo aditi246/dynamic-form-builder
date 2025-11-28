@@ -1,23 +1,40 @@
-import { Component, output, OnInit, signal, effect } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
+import { Component, output, OnInit, OnDestroy, signal, effect } from '@angular/core';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+  FormsModule
+} from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { FormField } from '../fields-step/fields-step';
 import { Subscription } from 'rxjs';
 import { FormsManagementService, SavedForm } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { AudioTextareaComponent } from '../../../components/audio-textarea/audio-textarea';
+import { FileInputComponent } from '../../../components/input-file/input-file';
 import { FormConfigService } from '../../../shared/services/form-config.service';
 import { RulesEngineService } from '../../../shared/services/rules-engine.service';
+import { OpenAiService } from '../../../shared/services/open-ai.service';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
+
+interface FilePreviewEntry {
+  file: File;
+  previewUrl?: string;
+  isBlurry?: boolean;
+}
 
 @Component({
   selector: 'app-preview-step',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, FormsModule, IconComponent, AudioTextareaComponent, HttpClientModule],
+  imports: [ReactiveFormsModule, CommonModule, FormsModule, IconComponent, AudioTextareaComponent, HttpClientModule, FileInputComponent],
   templateUrl: './preview-step.html'
 })
-export class PreviewStep implements OnInit {
-  nextStep = output<void>();
+export class PreviewStep implements OnInit, OnDestroy {
+  nextStep = output<Record<string, any>>();
   backStep = output<void>();
 
   fields = signal<FormField[]>([]);
@@ -27,6 +44,9 @@ export class PreviewStep implements OnInit {
   loadingOptions = signal<Record<string, boolean>>({});
   optionErrors = signal<Record<string, string>>({});
   contextFieldNames = signal<Set<string>>(new Set());
+  filePreviews = signal<Record<string, FilePreviewEntry[]>>({});
+  blurryWarnings = signal<Record<string, number | null>>({});
+  analyzingImages = signal<Record<string, number | null>>({});
   isContextField = (name: string) => this.contextFieldNames().has(name);
 
   private valueChangesSub?: Subscription;
@@ -35,6 +55,7 @@ export class PreviewStep implements OnInit {
     private formConfigService: FormConfigService,
     private rulesEngineService: RulesEngineService,
     private formsService: FormsManagementService,
+    private openAiService: OpenAiService,
     private http: HttpClient
   ) {
     effect(() => {
@@ -53,6 +74,10 @@ export class PreviewStep implements OnInit {
     this.loadFields(this.formsService.getCurrentFormId(), this.formsService.getCurrentFormName());
   }
 
+  ngOnDestroy() {
+    this.valueChangesSub?.unsubscribe();
+  }
+
   private loadFields(formId?: string | null, formName?: string | null) {
     const fieldsData = this.formsService.getFormFields(formId, formName) || [];
     const contextFields = this.getUserContextFields();
@@ -63,6 +88,9 @@ export class PreviewStep implements OnInit {
 
     if (mergedFields && mergedFields.length > 0) {
       this.contextFieldNames.set(new Set(contextFields.map(f => f.name)));
+      this.filePreviews.set({});
+      this.blurryWarnings.set({});
+      this.analyzingImages.set({});
       this.fields.set(mergedFields as FormField[]);
       this.formConfigService.setFields(this.fields());
       this.buildForm();
@@ -82,6 +110,9 @@ export class PreviewStep implements OnInit {
     this.selectOptions.set({});
     this.loadingOptions.set({});
     this.optionErrors.set({});
+    this.filePreviews.set({});
+    this.blurryWarnings.set({});
+    this.analyzingImages.set({});
     this.valueChangesSub?.unsubscribe();
   }
 
@@ -136,6 +167,10 @@ export class PreviewStep implements OnInit {
         validators.push(Validators.email);
       }
       
+      if (field.type === 'file') {
+        validators.push(this.buildFileValidator(field));
+      }
+      
       // Set default value
       let defaultValue: any = '';
       const ctxValue = contextValues.find(entry => entry.key === field.name)?.value;
@@ -149,6 +184,8 @@ export class PreviewStep implements OnInit {
           defaultValue = false;
         } else if (field.type === 'number') {
           defaultValue = null;
+        } else if (field.type === 'file') {
+          defaultValue = [];
         }
       }
       
@@ -231,6 +268,12 @@ export class PreviewStep implements OnInit {
     }
     if (control.errors['max']) {
       return `Maximum value is ${control.errors['max'].max}.`;
+    }
+    if (control.errors['minFiles']) {
+      return `Upload at least ${control.errors['minFiles'].minFiles} file(s).`;
+    }
+    if (control.errors['maxFiles']) {
+      return `Upload no more than ${control.errors['maxFiles'].maxFiles} file(s).`;
     }
     if (control.errors['pattern']) {
       return 'Invalid format.';
@@ -327,9 +370,240 @@ export class PreviewStep implements OnInit {
     return { label: String(label), value };
   }
 
+  private buildFileValidator(field: FormField): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const files = control.value as File[] | null;
+      const count = Array.isArray(files) ? files.length : 0;
+      const errors: any = {};
+
+      if (field.required && count === 0) {
+        errors.required = true;
+      }
+      if (field.validation?.minFiles !== undefined && count < field.validation.minFiles) {
+        errors.minFiles = { minFiles: field.validation.minFiles, actual: count };
+      }
+      if (field.validation?.maxFiles !== undefined && count > field.validation.maxFiles) {
+        errors.maxFiles = { maxFiles: field.validation.maxFiles, actual: count };
+      }
+
+      return Object.keys(errors).length ? errors : null;
+    };
+  }
+
+  onBack() {
+    this.backStep.emit();
+  }
+
+  onSubmit() {
+    this.nextStep.emit(this.previewForm.getRawValue());
+  }
+
   onAiCommandChange(text: string) {
-    // Handle AI command text changes
-    // TODO: Implement actual AI filling logic when text is received
-    console.log('AI command changed:', text);
+    if (!text || !text.trim()) {
+      return;
+    }
+
+    const prompt = this.openAiService.prepareFormPrompt(
+      text,
+      this.fields(),
+      this.previewForm.value
+    );
+
+    this.openAiService.generateText(prompt).subscribe({
+      next: (response) => {
+        try {
+          const aiText = response.choices[0]?.message?.content?.trim() || '';
+          if (!aiText) {
+            console.error('No text in AI response');
+            return;
+          }
+
+          const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+          const jsonText = jsonMatch ? jsonMatch[0] : aiText;
+          const formValues = JSON.parse(jsonText);
+          console.log(formValues);
+
+          this.previewForm.patchValue(formValues);
+        } catch (error) {
+          console.error('Error parsing AI response:', error);
+        }
+      },
+      error: (err) => {
+        console.error('AI service error:', err);
+      }
+    });
+  }
+
+  onFileUpload(file: File) {
+    this.openAiService.extractDataFromFile(file, this.fields(), this.previewForm.value).subscribe({
+      next: (response) => {
+        try {
+          const textContent =
+            response?.output_text ||
+            response?.output?.[0]?.content?.[0]?.text ||
+            response?.choices?.[0]?.message?.content ||
+            '';
+
+          if (!textContent) {
+            console.error('No content in AI response');
+            return;
+          }
+
+          const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+          const jsonText = jsonMatch ? jsonMatch[0] : textContent;
+          const formValues = JSON.parse(jsonText);
+          console.log('Extracted form values from file:', formValues);
+
+          this.previewForm.patchValue(formValues);
+        } catch (error) {
+          console.error('Error parsing AI response from file:', error);
+        }
+      },
+      error: (err) => {
+        console.error('AI file extraction error:', err);
+      }
+    });
+  }
+
+  async onFilesAdded(field: FormField, files: File[]) {
+    if (!files || !files.length) return;
+    const current = this.filePreviews()[field.name] || [];
+    const previews = await Promise.all(files.map((file) => this.toPreviewEntry(file)));
+    const updated = [...current, ...previews];
+    this.updateFieldFiles(field.name, updated);
+
+    previews.forEach((preview, idx) => {
+      const absoluteIndex = current.length + idx;
+      this.runBlurCheck(field.name, absoluteIndex, preview.file);
+    });
+  }
+
+  onRemoveFile(fieldName: string, index: number) {
+    const current = this.filePreviews()[fieldName] || [];
+    if (index < 0 || index >= current.length) return;
+    const updated = current.filter((_, i) => i !== index);
+    this.updateFieldFiles(fieldName, updated);
+    this.setBlurryWarning(fieldName, null);
+  }
+
+  onBlurryAction(fieldName: string, event: { action: 'reupload' | 'keep'; index: number }) {
+    if (event.action === 'reupload') {
+      this.onRemoveFile(fieldName, event.index);
+    } else {
+      this.setBlurryWarning(fieldName, null);
+    }
+  }
+
+  getAcceptForField(field: FormField): string {
+    if (field.fileType === 'all') return '*/*';
+    return 'image/*';
+  }
+
+  private async toPreviewEntry(file: File): Promise<FilePreviewEntry> {
+    const previewUrl = file.type?.startsWith('image/')
+      ? await this.fileToDataUrl(file)
+      : undefined;
+    return { file, previewUrl };
+  }
+
+  private fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private updateFieldFiles(fieldName: string, files: FilePreviewEntry[]) {
+    this.filePreviews.update((map) => ({ ...map, [fieldName]: files }));
+    const control = this.getFieldControl(fieldName);
+    if (control) {
+      control.setValue(files.length ? files.map((f) => f.file) : null);
+      control.markAsTouched();
+      control.updateValueAndValidity();
+    }
+  }
+
+  private async runBlurCheck(fieldName: string, index: number, file: File) {
+    this.setAnalyzingImage(fieldName, index);
+    try {
+      const observable = await this.openAiService.checkUploadedImage(file);
+      observable?.subscribe({
+        next: (res: any) => {
+          this.setAnalyzingImage(fieldName, null);
+          this.handleBlurResult(fieldName, index, res);
+        },
+        error: (err) => {
+          this.setAnalyzingImage(fieldName, null);
+          console.error('AI blur check failed', err);
+        },
+      });
+    } catch (err) {
+      this.setAnalyzingImage(fieldName, null);
+      console.error('AI blur check failed', err);
+    }
+  }
+
+  private handleBlurResult(fieldName: string, index: number, response: any) {
+    const result = this.extractBlurResult(response);
+    if (!result) return;
+
+    this.filePreviews.update((map) => {
+      const current = map[fieldName] || [];
+      if (!current[index]) return map;
+      const updated = [...current];
+      updated[index] = { ...updated[index], isBlurry: result.isBlurry };
+      return { ...map, [fieldName]: updated };
+    });
+
+    if (result.recommendReupload) {
+      this.setBlurryWarning(fieldName, index);
+    }
+  }
+
+  private extractBlurResult(response: any): { isBlurry: boolean; recommendReupload: boolean } | null {
+    if (!response) return null;
+
+    const textContent =
+      response?.output_text ||
+      response?.output?.[0]?.content?.[0]?.text ||
+      response?.choices?.[0]?.message?.content;
+
+    let payload: any = null;
+    if (typeof textContent === 'string') {
+      try {
+        payload = JSON.parse(textContent);
+      } catch {
+        const match = textContent.match(/\{[\s\S]*\}/);
+        if (match) {
+          try {
+            payload = JSON.parse(match[0]);
+          } catch {
+            payload = null;
+          }
+        }
+      }
+    }
+
+    if (!payload && typeof response === 'object') {
+      payload = response;
+    }
+
+    if (!payload) return null;
+
+    const isBlurry = payload.is_blurry ?? payload.isBlurry ?? payload.blurry ?? false;
+    const recommendReupload =
+      payload.recommend_reupload ?? payload.reupload ?? payload.is_blurry ?? false;
+
+    return { isBlurry: Boolean(isBlurry), recommendReupload: Boolean(recommendReupload) };
+  }
+
+  private setBlurryWarning(fieldName: string, index: number | null) {
+    this.blurryWarnings.update((map) => ({ ...map, [fieldName]: index }));
+  }
+
+  private setAnalyzingImage(fieldName: string, index: number | null) {
+    this.analyzingImages.update((map) => ({ ...map, [fieldName]: index }));
   }
 }

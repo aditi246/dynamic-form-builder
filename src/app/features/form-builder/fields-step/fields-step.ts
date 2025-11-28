@@ -12,6 +12,7 @@ export interface FormField {
   name: string;
   type: string;
   required: boolean;
+  fileType?: 'images' | 'all';
   options?: string[];
   selectSource?: 'manual' | 'api';
   apiOptions?: {
@@ -32,6 +33,8 @@ export interface FormField {
     step?: number;
     pattern?: string;
     regexType?: 'predefined' | 'custom';
+    minFiles?: number;
+    maxFiles?: number;
   };
   formValue?: FormControl;
 }
@@ -75,7 +78,7 @@ export class FieldsStep {
     regexType: new FormControl<'predefined' | 'custom'>('predefined'),
   });
 
-  fieldTypes = ['text', 'number', 'checkbox', 'select'];
+  fieldTypes = ['text', 'number', 'checkbox', 'select', 'file'];
 
   predefinedRegex = [
     { label: 'Email', value: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$' },
@@ -147,6 +150,8 @@ export class FieldsStep {
         (defaultControl.value === '' || typeof defaultControl.value === 'string')
       ) {
         defaultControl.patchValue(null, { emitEvent: false });
+      } else if (type === 'file' && defaultControl) {
+        defaultControl.patchValue(null, { emitEvent: false });
       } else if (
         type !== 'checkbox' &&
         type !== 'number' &&
@@ -201,6 +206,7 @@ export class FieldsStep {
   isTextType = computed(() => this.currentType() === 'text');
   isNumberType = computed(() => this.currentType() === 'number');
   isCheckboxType = computed(() => this.currentType() === 'checkbox');
+  isFileType = computed(() => this.currentType() === 'file');
 
   hasRegexPattern = signal<boolean>(false);
 
@@ -270,6 +276,26 @@ export class FieldsStep {
       }
     }
 
+    if (fieldData.type === 'file') {
+      validators.push((control: { value: File[] | null; }) => {
+        const files = control.value as File[] | null;
+        const count = Array.isArray(files) ? files.length : 0;
+        const errors: any = {};
+
+        if (fieldData.required && count === 0) {
+          errors.required = true;
+        }
+        if (fieldData.validation?.minFiles !== undefined && count < fieldData.validation.minFiles) {
+          errors.minFiles = { minFiles: fieldData.validation.minFiles, actual: count };
+        }
+        if (fieldData.validation?.maxFiles !== undefined && count > fieldData.validation.maxFiles) {
+          errors.maxFiles = { maxFiles: fieldData.validation.maxFiles, actual: count };
+        }
+
+        return Object.keys(errors).length ? errors : null;
+      });
+    }
+
     // Create FormControl with validators
     const control = new FormControl(
       this.getDefaultValue(fieldData),
@@ -298,6 +324,10 @@ export class FieldsStep {
 
     if (fieldData.type === 'select') {
       return fieldData.default ?? '';
+    }
+
+    if (fieldData.type === 'file') {
+      return null;
     }
 
     return fieldData.default ?? '';
@@ -352,6 +382,8 @@ export class FieldsStep {
             ? Boolean(value.default)
             : value.type === 'number'
             ? this.toNumberValue(value.default) ?? null
+            : value.type === 'file'
+            ? null
             : value.default ?? '',
         validation: {
           // For text type: only include minLength/maxLength if pattern is not set
@@ -362,6 +394,8 @@ export class FieldsStep {
           step: value.type === 'number' ? step : undefined,
           pattern: value.type === 'text' ? value.pattern || undefined : undefined,
           regexType: value.type === 'text' ? value.regexType || undefined : undefined,
+          minFiles: value.type === 'file' ? minValue : undefined,
+          maxFiles: value.type === 'file' ? maxValue : undefined,
         },
       };
 
@@ -398,7 +432,13 @@ export class FieldsStep {
   editField(field: FormField, index: number) {
     this.editingIndex.set(index);
     const defaultValue =
-      field.default ?? (field.type === 'checkbox' ? false : field.type === 'number' ? null : '');
+      field.type === 'checkbox'
+        ? Boolean(field.default)
+        : field.type === 'number'
+        ? field.default ?? null
+        : field.type === 'file'
+        ? null
+        : field.default ?? '';
     this.fieldForm.patchValue({
       label: field.label,
       name: field.name,

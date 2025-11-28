@@ -65,15 +65,25 @@
             </select>
 
             @if (isSelectField(conditionDraft.value.field || '')) {
-              <select
-                formControlName="multiValues"
-                multiple
-                class="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card h-full"
-              >
-                @for (opt of getSelectOptions(conditionDraft.value.field || ''); track opt) {
-                  <option [value]="opt">{{ opt }}</option>
+              <div class="space-y-1">
+                <select
+                  formControlName="multiValues"
+                  multiple
+                  class="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card h-full"
+                >
+                  @if (isOptionsLoading(conditionDraft.value.field || '')) {
+                    <option disabled>Loading...</option>
+                  }
+                  @for (opt of getSelectOptions(conditionDraft.value.field || ''); track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+                @if (getOptionError(conditionDraft.value.field || '')) {
+                  <p class="text-xs text-danger">{{ getOptionError(conditionDraft.value.field || '') }}</p>
+                } @else if (!isOptionsLoading(conditionDraft.value.field || '') && getSelectOptions(conditionDraft.value.field || '').length === 0) {
+                  <p class="text-xs text-muted">No options available for this field.</p>
                 }
-              </select>
+              </div>
             } @else {
               <input
                 type="text"

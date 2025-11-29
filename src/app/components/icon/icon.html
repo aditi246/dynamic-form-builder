@@ -97,14 +97,16 @@
     stroke-width="2"
     d="M5.121 17.804A8 8 0 0112 14a8 8 0 016.879 3.804M15 9a3 3 0 11-6 0 3 3 0 016 0z"
   />
-  @case ('upload') {
-  <svg [class]="class()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="2"
-      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-    />
-  </svg>
-  } }
 </svg>
+} @case ('upload') {
+<svg [class]="class()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="2"
+    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+  />
+</svg>
+} @default {
+<svg [class]="class()" viewBox="0 0 24 24"></svg>
+} }

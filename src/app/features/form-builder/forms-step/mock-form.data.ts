@@ -10,7 +10,7 @@ export const MOCK_FORM = {
   fields: [
     {
       label: 'Compliance Score',
-      name: 'comlianceScore',
+      name: 'complianceScore',
       type: 'number',
       required: false,
       default: null,
@@ -96,7 +96,7 @@ export const MOCK_RULES = [
     conditions: [],
     action: {
       type: 'enforce-comparison',
-      targetField: 'comlianceScore',
+      targetField: 'complianceScore',
       comparator: '>',
       valueSource: 'static',
       value: 0,
@@ -198,7 +198,7 @@ export const MOCK_RULES = [
       targetField: 'auditScore',
       comparator: '>=',
       valueSource: 'field',
-      otherField: 'comlianceScore',
+      otherField: 'complianceScore',
       offset: -10,
       errorMessage:
         'Audit Score must be greater than ( Compliance score - 10 )',

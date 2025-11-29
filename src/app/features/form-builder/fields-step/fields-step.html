@@ -1,4 +1,4 @@
-<div class="flex flex-col h-[calc(100vh-12rem)]">
+<div class="flex flex-col gap-4 min-h-full">
   <div class="flex gap-6 flex-1">
     <!-- Form Fields Table - 60% -->
     <div class="w-[60%] bg-card rounded-md shadow-sm p-6 flex flex-col">
@@ -121,8 +121,13 @@
               type="text"
               formControlName="label"
               placeholder="e.g. First Name"
-              class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              [class.border-danger]="isInvalid('label')"
+              [class.border-border]="!isInvalid('label')"
             />
+            @if (isInvalid('label')) {
+            <p class="text-xs text-danger mt-1">Label is required.</p>
+            }
           </div>
 
           <div>
@@ -133,8 +138,13 @@
               type="text"
               formControlName="name"
               placeholder="e.g. firstName"
-              class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              [class.border-danger]="isInvalid('name')"
+              [class.border-border]="!isInvalid('name')"
             />
+            @if (isInvalid('name')) {
+            <p class="text-xs text-danger mt-1">Name is required.</p>
+            }
           </div>
 
           <div>
@@ -425,23 +435,5 @@
         </div>
       </form>
     </div>
-  </div>
-
-  <!-- Navigation Buttons at Bottom -->
-  <div class="flex justify-between mt-6">
-    <button
-      type="button"
-      (click)="backStep.emit()"
-      class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium"
-    >
-      Back
-    </button>
-    <button
-      type="button"
-      (click)="nextStep.emit()"
-      class="px-6 py-2 bg-success text-white rounded-md hover:opacity-90 font-medium"
-    >
-      Next
-    </button>
   </div>
 </div>

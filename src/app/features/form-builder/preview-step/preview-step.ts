@@ -378,12 +378,6 @@ export class PreviewStep implements OnInit, OnDestroy {
     return this.optionErrors()[fieldName];
   }
 
-  refreshOptions(field: FormField) {
-    if (field.type === 'select' && field.selectSource === 'api') {
-      this.fetchOptions(field);
-    }
-  }
-
   private loadDynamicOptions() {
     this.fields()
       .filter(

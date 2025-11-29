@@ -228,9 +228,9 @@ export class FormsManagementService {
       fieldCount: fieldCount,
       ruleCount: ruleCount,
       fields: copiedFields,
-      userContext: sourceForm.userContext
-        ? { ...sourceForm.userContext }
-        : undefined,
+      userContext: Array.isArray(sourceForm.userContext)
+        ? sourceForm.userContext.map((ctx) => ({ ...ctx }))
+        : [],
     };
 
     this.forms.update((forms) => [...forms, copiedForm]);

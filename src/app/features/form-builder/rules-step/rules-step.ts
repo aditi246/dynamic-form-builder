@@ -10,6 +10,7 @@ import { CommonModule } from '@angular/common';
 import {
   FormControl,
   FormGroup,
+  FormArray,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
@@ -62,6 +63,11 @@ export class RulesStep implements OnInit {
   collapsedMap = signal<Record<string, boolean>>({});
   editingRuleId = signal<string | null>(null);
   conditions = signal<RuleCondition[]>([]);
+  showContextModal = signal<boolean>(false);
+  contextForm = new FormArray<FormGroup>([]);
+  contextFormGroup = new FormGroup({
+    entries: this.contextForm,
+  });
 
   ruleForm = new FormGroup({
     name: new FormControl('', [Validators.required]),
@@ -224,6 +230,106 @@ export class RulesStep implements OnInit {
     this.userContextEntriesSignal.set(ctx);
     this.fields.set((fieldsData as FormField[]) || []);
     this.loadSelectOptions();
+  }
+
+  openContextModal() {
+    const ctx = this.userContextEntriesSignal();
+    this.buildContextForm(ctx);
+    this.showContextModal.set(true);
+  }
+
+  closeContextModal() {
+    this.showContextModal.set(false);
+  }
+
+  addContextRow() {
+    this.contextForm.push(
+      new FormGroup({
+        key: new FormControl('', [Validators.required]),
+        displayName: new FormControl('', [Validators.required]),
+        value: new FormControl(''),
+      }),
+    );
+  }
+
+  removeContextRow(index: number) {
+    if (index >= 0 && index < this.contextForm.length) {
+      this.contextForm.removeAt(index);
+    }
+  }
+
+  saveContextRows() {
+    const formId = this.formsService.getCurrentFormId();
+    if (!formId) {
+      this.closeContextModal();
+      return;
+    }
+    const previousKeys = new Set(
+      (this.userContextEntriesSignal() || []).map((e) => e.key),
+    );
+    const normalized =
+      this.contextForm.controls
+        .map((group) => {
+          const key = String(group.get('key')?.value || '').trim();
+          const displayName = String(
+            group.get('displayName')?.value || '',
+          ).trim();
+          const value = String(group.get('value')?.value || '');
+          if (!key || !displayName) return null;
+          return { key, displayName, value };
+        })
+        .filter((x): x is { key: string; displayName: string; value: string } =>
+          Boolean(x),
+        ) || [];
+
+    const nextKeys = new Set(normalized.map((n) => n.key));
+    const removedKeys: string[] = [];
+    previousKeys.forEach((k) => {
+      if (!nextKeys.has(k)) removedKeys.push(k);
+    });
+
+    if (removedKeys.length) {
+      const rules = this.formConfigService.rules();
+      const affected = rules.filter((r) =>
+        r.conditions?.some((c) => removedKeys.includes(c.field)),
+      );
+      if (affected.length) {
+        const proceed = confirm(
+          `You removed ${removedKeys.join(', ')} from user context. There are ${affected.length} rule(s) using those keys. Remove those rules and continue?`,
+        );
+        if (!proceed) {
+          return;
+        }
+        this.formConfigService.removeRulesByIds(affected.map((r) => r.id));
+      }
+    }
+
+    this.formsService.updateForm(formId, { userContext: normalized });
+    this.userContextEntriesSignal.set(normalized);
+    this.closeContextModal();
+  }
+
+  private buildContextForm(
+    entries: { key: string; displayName: string; value: string }[],
+  ) {
+    while (this.contextForm.length) {
+      this.contextForm.removeAt(0);
+    }
+    if (!entries || !entries.length) {
+      this.addContextRow();
+      return;
+    }
+    entries.forEach((entry) => {
+      this.contextForm.push(
+        new FormGroup({
+          key: new FormControl(entry.key, [Validators.required]),
+          displayName: new FormControl(entry.displayName, [
+            Validators.required,
+          ]),
+          value: new FormControl(entry.value || ''),
+        }),
+      );
+    });
   }
 
   addCondition() {

@@ -36,9 +36,7 @@ export class FormsStep implements OnInit {
   }>();
 
   showCreateModal = signal<boolean>(false);
-  showContextModal = signal<boolean>(false);
   showFillModal = signal<boolean>(false);
-  contextEditFormId = signal<string | null>(null);
   fillFormId = signal<string | null>(null);
   submissionsFormId = signal<string | null>(null);
   submissions = signal<
@@ -58,17 +56,9 @@ export class FormsStep implements OnInit {
 
   createFormGroup = new FormGroup({
     name: new FormControl('', [Validators.required, Validators.minLength(1)]),
-    provideContext: new FormControl(false),
-    userContextJson: new FormControl(''),
   });
 
-  contextEditForm = new FormGroup({
-    userContextJson: new FormControl(''),
-  });
-
-  fillContextForm = new FormGroup({
-    userContextJson: new FormControl(''),
-  });
+  fillContextForm = new FormGroup({});
 
   constructor(
     public formsService: FormsManagementService,
@@ -81,52 +71,19 @@ export class FormsStep implements OnInit {
 
   openCreateModal() {
     this.showCreateModal.set(true);
-    this.createFormGroup.reset({ provideContext: false, userContextJson: '' });
+    this.createFormGroup.reset({ name: '' });
   }
 
   closeCreateModal() {
     this.showCreateModal.set(false);
-    this.createFormGroup.reset({ provideContext: false, userContextJson: '' });
-  }
-
-  openContextModal(form: SavedForm, event?: Event) {
-    event?.stopPropagation();
-    this.contextEditFormId.set(form.id);
-    const json =
-      form.userContext && form.userContext.length
-        ? JSON.stringify(form.userContext, null, 2)
-        : '';
-    this.contextEditForm.reset({ userContextJson: json });
-    this.showContextModal.set(true);
-  }
-
-  closeContextModal() {
-    this.showContextModal.set(false);
-    this.contextEditFormId.set(null);
-    this.contextEditForm.reset({ userContextJson: '' });
+    this.createFormGroup.reset({ name: '' });
   }
 
   createForm() {
     if (this.createFormGroup.valid) {
       const formName =
         this.createFormGroup.get('name')?.value || 'Untitled Form';
-      const provideContext =
-        !!this.createFormGroup.get('provideContext')?.value;
-      const rawContext =
-        this.createFormGroup.get('userContextJson')?.value || '';
-      const parsedContext = provideContext
-        ? this.parseUserContext(rawContext)
-        : null;
-      if (provideContext && !parsedContext) {
-        alert(
-          'Please enter a valid JSON array of { key, displayName, value } entries.',
-        );
-        return;
-      }
-      const formId = this.formsService.createForm(
-        formName,
-        parsedContext || undefined,
-      );
+      const formId = this.formsService.createForm(formName);
       this.closeCreateModal();
       this.formSelected.emit(formId);
     } else {
@@ -137,44 +94,32 @@ export class FormsStep implements OnInit {
   openFillModal(form: SavedForm, event?: Event) {
     event?.stopPropagation();
     this.fillFormId.set(form.id);
-    const json =
-      form.userContext && form.userContext.length
-        ? JSON.stringify(form.userContext, null, 2)
-        : '';
-    this.fillContextForm.reset({ userContextJson: json });
+    this.fillContextDefs.set(form.userContext || []);
+    const group: Record<string, FormControl> = {};
+    (form.userContext || []).forEach((ctx) => {
+      group[ctx.key] = new FormControl(ctx.value || '');
+    });
+    this.fillContextForm = new FormGroup(group);
     this.showFillModal.set(true);
   }
 
   closeFillModal() {
     this.fillFormId.set(null);
-    this.fillContextForm.reset({ userContextJson: '' });
+    this.fillContextDefs.set([]);
+    this.fillContextForm = new FormGroup({});
     this.showFillModal.set(false);
   }
 
   launchUserFill() {
     const formId = this.fillFormId();
     if (!formId) return;
-    const rawContext =
-      this.fillContextForm.get('userContextJson')?.value?.trim() || '';
-    const parsedContext =
-      (rawContext ? this.parseUserContext(rawContext) : []) || [];
-    this.startUserFill.emit({ formId, userContext: parsedContext });
+    const defs = this.fillContextDefs() || [];
+    const payload = defs.map((def) => ({
+      ...def,
+      value: this.fillContextForm.get(def.key)?.value || '',
+    }));
+    this.startUserFill.emit({ formId, userContext: payload });
     this.closeFillModal();
-  }
-
-  updateUserContext() {
-    const formId = this.contextEditFormId();
-    if (!formId) return;
-    const rawContext = this.contextEditForm.get('userContextJson')?.value || '';
-    const parsed = this.parseUserContext(rawContext);
-    if (rawContext.trim() && !parsed) {
-      alert(
-        'Please enter a valid JSON array of { key, displayName, value } entries.',
-      );
-      return;
-    }
-    this.formsService.updateForm(formId, { userContext: parsed || [] });
-    this.closeContextModal();
   }
 
   selectForm(formId: string) {
@@ -198,6 +143,8 @@ export class FormsStep implements OnInit {
   }) {
     this.selectedSubmission.set(entry);
   }
+
+  fillContextDefs = signal<SavedForm['userContext']>([]);
 
   editSelectedSubmission() {
     const formId = this.submissionsFormId();
@@ -270,28 +217,5 @@ export class FormsStep implements OnInit {
       MOCK_RULES,
     );
     this.formsService.loadForms();
-  }
-
-  private parseUserContext(raw: string): SavedForm['userContext'] | null {
-    if (!raw || !raw.trim()) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        return null;
-      }
-      const normalized = parsed
-        .filter(
-          (entry: any) =>
-            entry && entry.key && entry.displayName && entry.value,
-        )
-        .map((entry: any) => ({
-          key: String(entry.key),
-          displayName: String(entry.displayName),
-          value: String(entry.value),
-        }));
-      return normalized.length > 0 ? normalized : null;
-    } catch {
-      return null;
-    }
   }
 }

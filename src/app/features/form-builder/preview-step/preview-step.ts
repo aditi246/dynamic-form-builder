@@ -6,6 +6,7 @@ import {
   signal,
   effect,
   untracked,
+  ViewChild,
 } from '@angular/core';
 import {
   AbstractControl,
@@ -55,6 +56,8 @@ type SelectOption = { label: string; value: any; raw?: any };
   templateUrl: './preview-step.html',
 })
 export class PreviewStep implements OnInit, OnDestroy {
+  @ViewChild('audioTextarea') audioTextarea?: AudioTextareaComponent;
+
   nextStep = output<Record<string, any>>();
   backStep = output<void>();
 
@@ -488,6 +491,9 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   onAiCommandChange(text: string) {
     if (!text || !text.trim()) {
+      if (this.audioTextarea) {
+        this.audioTextarea.setAiProcessingComplete();
+      }
       return;
     }
 
@@ -503,6 +509,9 @@ export class PreviewStep implements OnInit, OnDestroy {
           const aiText = response.choices[0]?.message?.content?.trim() || '';
           if (!aiText) {
             console.error('No text in AI response');
+            if (this.audioTextarea) {
+              this.audioTextarea.setAiProcessingComplete();
+            }
             return;
           }
 
@@ -512,12 +521,21 @@ export class PreviewStep implements OnInit, OnDestroy {
           console.log(formValues);
 
           this.previewForm.patchValue(formValues);
+          if (this.audioTextarea) {
+            this.audioTextarea.setAiProcessingComplete();
+          }
         } catch (error) {
           console.error('Error parsing AI response:', error);
+          if (this.audioTextarea) {
+            this.audioTextarea.setAiProcessingComplete();
+          }
         }
       },
       error: (err) => {
         console.error('AI service error:', err);
+        if (this.audioTextarea) {
+          this.audioTextarea.setAiProcessingComplete();
+        }
       },
     });
   }
@@ -805,5 +823,15 @@ export class PreviewStep implements OnInit, OnDestroy {
     if (!base) {
       this.optionLookup.set(target);
     }
+  }
+
+  resetForm() {
+    this.previewForm.reset();
+    this.filePreviews.set({});
+    this.blurryWarnings.set({});
+    this.analyzingImages.set({});
+    // Rebuild form with default values
+    this.buildForm();
+    this.applyRules();
   }
 }

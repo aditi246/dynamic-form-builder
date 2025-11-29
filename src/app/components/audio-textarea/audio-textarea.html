@@ -25,46 +25,68 @@
   </div>
   }
 
-  <div class="flex items-center gap-3 flex-wrap">
-    <button
-      type="button"
-      (click)="isRecording() ? stopRecording() : startRecording()"
-      [class.bg-danger]="isRecording()"
-      [class.text-white]="isRecording()"
-      [class.border-border]="!isRecording()"
-      [class.text-text]="!isRecording()"
-      class="px-4 py-2 border rounded-md hover:opacity-90 font-medium flex items-center gap-2 transition-colors"
-    >
-      <app-icon name="microphone" class="w-5 h-5"></app-icon>
-      {{ isRecording() ? 'Stop Recording' : 'Start Voice Input' }}
-    </button>
+  <div class="flex items-center gap-3 flex-wrap justify-between">
+    <div class="flex items-center gap-3 flex-wrap">
+      <button
+        type="button"
+        (click)="isRecording() ? stopRecording() : startRecording()"
+        [class.bg-danger]="isRecording()"
+        [class.text-white]="isRecording()"
+        [class.border-border]="!isRecording()"
+        [class.text-text]="!isRecording()"
+        class="px-4 py-2 border rounded-md hover:opacity-90 font-medium flex items-center gap-2 transition-colors"
+      >
+        <app-icon name="microphone" class="w-5 h-5"></app-icon>
+        {{ isRecording() ? 'Stop Recording' : 'Start Voice Input' }}
+      </button>
 
-    <label
-      class="px-4 py-2 border border-border rounded-md hover:bg-bg cursor-pointer font-medium flex items-center gap-2 transition-colors"
-    >
-      <app-icon name="upload" class="w-5 h-5"></app-icon>
-      Upload File
-      <input
-        type="file"
-        class="hidden"
-        accept="image/*,.pdf,.doc,.docx,.txt"
-        (change)="onFileSelected($event)"
-      />
-    </label>
+      <label
+        class="px-4 py-2 border border-border rounded-md hover:bg-bg cursor-pointer font-medium flex items-center gap-2 transition-colors"
+      >
+        <app-icon name="upload" class="w-5 h-5"></app-icon>
+        Upload File
+        <input
+          type="file"
+          class="hidden"
+          accept="image/*,.pdf,.doc,.docx,.txt"
+          (change)="onFileSelected($event)"
+        />
+      </label>
 
-    <button
-      type="button"
-      (click)="fillWithAI()"
-      class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium flex items-center gap-2"
-    >
-      <app-icon name="sparkle" class="w-5 h-5"></app-icon>
-      Fill with AI
-    </button>
+      <button
+        type="button"
+        (click)="clearAll()"
+        class="px-4 py-2 border border-border rounded-md hover:bg-bg font-medium flex items-center gap-2 transition-colors text-text"
+      >
+        <app-icon name="delete" class="w-5 h-5"></app-icon>
+        Clear
+      </button>
+    </div>
 
-    @if (isProcessing()) {
+    <div class="flex items-center gap-3 flex-wrap">
+      @if (isAiProcessing()) {
+      <div class="flex items-center gap-2 text-muted">
+        <app-icon name="spinner" class="animate-spin h-5 w-5"></app-icon>
+        <span class="text-sm">AI is processing...</span>
+      </div>
+      }
+      <button
+        type="button"
+        (click)="fillWithAI()"
+        [disabled]="isAiProcessing()"
+        [class.opacity-50]="isAiProcessing()"
+        [class.cursor-not-allowed]="isAiProcessing()"
+        class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <app-icon name="sparkle" class="w-5 h-5"></app-icon>
+        Fill with AI
+      </button>
+    </div>
+
+    @if (isProcessing() && !isAiProcessing()) {
     <div class="flex items-center gap-2 text-muted">
       <app-icon name="spinner" class="animate-spin h-5 w-5"></app-icon>
-      <span class="text-sm">AI is processing...</span>
+      <span class="text-sm">Processing...</span>
     </div>
     }
   </div>

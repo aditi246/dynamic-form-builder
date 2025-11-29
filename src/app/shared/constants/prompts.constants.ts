@@ -22,7 +22,7 @@ Return only the JSON object, no additional text.`,
   CURRENT_VALUES_PREFIX: '\nCurrent form values:\n',
 
   BLURRY_IMAGE_CHECK: `You are a quality checker for user-uploaded photos.
-Decide if the image is too blurry to use.
+Decide if the image is too blurry to use. If you are able to read stuff from the image then bulrriness score increases and be less strict, if that's the case. 
 Return ONLY valid JSON with:
 {
   "is_blurry": boolean,
@@ -61,3 +61,4 @@ Example format: {"firstName": "John", "lastName": "Doe", "age": 30, "isActive": 
 
 Return only the JSON object, no additional text.`,
 };
+

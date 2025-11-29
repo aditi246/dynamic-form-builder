@@ -11,6 +11,17 @@
         </div>
       </div>
 
+      <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-semibold text-text">Form Preview</h2>
+      <button
+        type="button"
+        (click)="resetForm()"
+        class="px-4 py-2 border border-border rounded-md hover:bg-bg font-medium flex items-center gap-2 transition-colors text-text"
+      >
+        Reset 
+      </button>
+    </div>
+
       <form
         [formGroup]="previewForm"
         class="space-y-6 overflow-y-auto pr-1 flex-1"
@@ -153,6 +164,7 @@
           Voice or AI command
         </h2>
         <app-audio-textarea
+          #audioTextarea
           (textChange)="onAiCommandChange($event)"
           (fileUpload)="onFileUpload($event)"
         >

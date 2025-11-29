@@ -80,7 +80,7 @@
     } @else if (currentStep() === 'preview') {
     <app-preview-step
       #previewCmp
-      (nextStep)="onNextStep()"
+      (nextStep)="onPreviewSubmit($event)"
       (backStep)="onBackStep()"
     ></app-preview-step>
     }
@@ -101,7 +101,7 @@
       type="button"
       (click)="handleNextClick()"
       class="px-6 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-      [disabled]="currentStep() === 'forms' && !hasActiveForm()"
+      [disabled]="isPrimaryDisabled()"
     >
       {{ currentStep() === 'preview' ? 'Submit' : 'Next' }}
     </button>

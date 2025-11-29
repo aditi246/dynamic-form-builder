@@ -91,4 +91,20 @@ export class BuilderShell {
     }
     this.onNextStep();
   }
+
+  onPreviewSubmit(values: Record<string, any>) {
+    // Currently we just log the submitted values; wire up persistence here if needed.
+    console.log('Form submitted with values:', values);
+  }
+
+  isPrimaryDisabled(): boolean {
+    if (this.currentStep() === 'forms') {
+      return !this.hasActiveForm();
+    }
+    if (this.currentStep() === 'preview') {
+      const form = this.previewCmp?.previewForm;
+      return !form || form.invalid;
+    }
+    return false;
+  }
 }

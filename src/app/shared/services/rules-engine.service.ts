@@ -95,10 +95,25 @@ export class RulesEngineService {
     }
 
     if (action.type === 'hide-options') {
+      const sourceFields =
+        action.sourceFields && action.sourceFields.length
+          ? action.sourceFields
+          : action.sourceField
+            ? [action.sourceField]
+            : [];
+
+      const dynamicOptions = sourceFields
+        .flatMap((field) => this.normalizeToArray(values[field]))
+        .filter((v) => v !== null && v !== undefined && String(v).trim() !== '')
+        .map((v) => String(v));
+
+      const staticOptions = action.options || [];
+      const mergedOptions = [...new Set([...staticOptions, ...dynamicOptions])];
+
       return {
         hideOptions: {
           field: action.targetField,
-          options: action.options || [],
+          options: mergedOptions,
         },
       };
     }
@@ -253,5 +268,11 @@ export class RulesEngineService {
       default:
         return left === right;
     }
+  }
+
+  private normalizeToArray(value: any): any[] {
+    if (Array.isArray(value)) return value;
+    if (value === null || value === undefined) return [];
+    return [value];
   }
 }

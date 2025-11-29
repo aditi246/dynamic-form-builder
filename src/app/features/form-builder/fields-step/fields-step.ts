@@ -18,6 +18,7 @@ import { FormsManagementService } from '../../../shared/services/forms-managemen
 import { IconComponent } from '../../../components/icon/icon';
 import { DefaultsComponent } from '../../../components/defaults/defaults';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { ApiCacheService } from '../../../shared/services/api-cache.service';
 
 export interface FormField {
   label: string;
@@ -87,6 +88,8 @@ export class FieldsStep {
     default: new FormControl<string | number | boolean | null>(''),
     options: new FormControl(''),
     selectSource: new FormControl<'manual' | 'api'>('manual'),
+    apiMode: new FormControl<'new' | 'reuse'>('new'),
+    apiPresetField: new FormControl(''),
     apiUrl: new FormControl(''),
     apiItemsPath: new FormControl(''),
     apiLabelField: new FormControl(''),
@@ -120,11 +123,34 @@ export class FieldsStep {
   apiPreviewOptions = signal<{ label: string; value: any }[]>([]);
   apiPreviewLoading = signal<boolean>(false);
   apiPreviewError = signal<string | null>(null);
+  apiPresets = computed(() => {
+    const seen = new Set<string>();
+    return this.fields()
+      .filter(
+        (f) =>
+          f.type === 'select' && f.selectSource === 'api' && f.apiOptions?.url,
+      )
+      .map((f) => {
+        const key = this.getApiCacheKey(f.apiOptions!);
+        return {
+          key,
+          fromField: f.name,
+          label: f.label,
+          config: f.apiOptions!,
+        };
+      })
+      .filter((preset) => {
+        if (seen.has(preset.key)) return false;
+        seen.add(preset.key);
+        return true;
+      });
+  });
 
   constructor(
     private storageService: StorageService,
     private formsService: FormsManagementService,
     private http: HttpClient,
+    private apiCacheService: ApiCacheService,
   ) {
     effect(() => {
       const formId = this.formsService.getCurrentFormId();
@@ -231,6 +257,28 @@ export class FieldsStep {
       this.fieldForm.get('min')?.disable({ emitEvent: false });
       this.fieldForm.get('max')?.disable({ emitEvent: false });
     }
+
+    this.fieldForm.get('selectSource')?.valueChanges.subscribe((source) => {
+      if (source !== 'api') {
+        this.fieldForm.get('apiMode')?.setValue('new', { emitEvent: false });
+        this.fieldForm
+          .get('apiPresetField')
+          ?.setValue('', { emitEvent: false });
+      }
+    });
+
+    this.fieldForm.get('apiMode')?.valueChanges.subscribe((mode) => {
+      if (mode === 'new') {
+        this.fieldForm
+          .get('apiPresetField')
+          ?.setValue('', { emitEvent: false });
+      } else if (!this.fieldForm.value.apiPresetField) {
+        const firstPreset = this.apiPresets()[0];
+        if (firstPreset) {
+          this.applyApiPreset(firstPreset.fromField);
+        }
+      }
+    });
   }
 
   isSelectType = computed(() => this.currentType() === 'select');
@@ -286,6 +334,58 @@ export class FieldsStep {
     }
 
     return options;
+  }
+
+  private getApiCacheKey(config: {
+    url?: string;
+    itemsPath?: string;
+    labelField?: string;
+    valueField?: string;
+    saveStrategy?: string;
+  }): string {
+    return JSON.stringify({
+      url: config.url || '',
+      itemsPath: config.itemsPath || '',
+      labelField: config.labelField || '',
+      valueField: config.valueField || '',
+      saveStrategy: config.saveStrategy || 'value',
+    });
+  }
+
+  applyApiPreset(fieldName: string) {
+    if (!fieldName) return;
+    const preset = this.apiPresets().find((p) => p.fromField === fieldName);
+    if (!preset) return;
+    this.fieldForm.patchValue(
+      {
+        selectSource: 'api',
+        apiMode: 'reuse',
+        apiPresetField: fieldName,
+        apiUrl: preset.config.url || '',
+        apiItemsPath: preset.config.itemsPath || '',
+        apiLabelField: preset.config.labelField || '',
+        apiValueField: preset.config.valueField || '',
+        apiSaveStrategy: preset.config.saveStrategy || 'value',
+      },
+      { emitEvent: false },
+    );
+    this.fetchApiPreview();
+  }
+
+  onPresetChange(event: Event) {
+    const target = event.target as HTMLSelectElement | null;
+    const value = target?.value || '';
+    this.applyApiPreset(value);
+  }
+
+  private getApiConfigFromForm() {
+    return {
+      url: this.fieldForm.value.apiUrl || '',
+      itemsPath: this.fieldForm.value.apiItemsPath || '',
+      labelField: this.fieldForm.value.apiLabelField || '',
+      valueField: this.fieldForm.value.apiValueField || '',
+      saveStrategy: this.fieldForm.value.apiSaveStrategy || 'value',
+    };
   }
 
   private createFormControl(fieldData: FormField): FormControl {
@@ -519,6 +619,8 @@ export class FieldsStep {
       // Convert options array back to double-quoted format for editing
       options: field.options?.map((opt) => `"${opt}"`).join(' ') || '',
       selectSource: field.selectSource || 'manual',
+      apiMode: 'new',
+      apiPresetField: '',
       apiUrl: field.apiOptions?.url || '',
       apiItemsPath: field.apiOptions?.itemsPath || '',
       apiLabelField: field.apiOptions?.labelField || '',
@@ -586,6 +688,8 @@ export class FieldsStep {
       default: '',
       options: '',
       selectSource: 'manual',
+      apiMode: 'new',
+      apiPresetField: '',
       apiSaveStrategy: 'value',
       regexType: 'predefined',
     });
@@ -595,12 +699,22 @@ export class FieldsStep {
     this.apiPreviewError.set(null);
   }
 
-  fetchApiPreview() {
+  fetchApiPreview(forceRefresh = false) {
     if (this.fieldForm.value.selectSource !== 'api') return;
     const url = this.fieldForm.value.apiUrl;
     if (!url) {
       this.apiPreviewError.set('API URL is required');
       return;
+    }
+
+    const apiConfig = this.getApiConfigFromForm();
+    if (!forceRefresh) {
+      const cached = this.apiCacheService.get(apiConfig);
+      if (cached) {
+        this.apiPreviewOptions.set(cached);
+        this.apiPreviewError.set(null);
+        return;
+      }
     }
 
     this.apiPreviewLoading.set(true);
@@ -621,6 +735,7 @@ export class FieldsStep {
           this.apiPreviewError.set('No options returned from API');
         }
         this.apiPreviewOptions.set(mapped);
+        this.apiCacheService.set(apiConfig, mapped);
         this.apiPreviewLoading.set(false);
       },
       error: () => {

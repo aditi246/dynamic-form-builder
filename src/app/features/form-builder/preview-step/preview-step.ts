@@ -5,6 +5,7 @@ import {
   OnDestroy,
   signal,
   effect,
+  untracked,
 } from '@angular/core';
 import {
   AbstractControl,
@@ -37,6 +38,8 @@ interface FilePreviewEntry {
   isBlurry?: boolean;
 }
 
+type SelectOption = { label: string; value: any; raw?: any };
+
 @Component({
   selector: 'app-preview-step',
   standalone: true,
@@ -58,17 +61,23 @@ export class PreviewStep implements OnInit, OnDestroy {
   fields = signal<FormField[]>([]);
   previewForm = new FormGroup({});
   hiddenFields = signal<Set<string>>(new Set());
-  selectOptions = signal<Record<string, { label: string; value: any }[]>>({});
+  selectOptions = signal<Record<string, SelectOption[]>>({});
   loadingOptions = signal<Record<string, boolean>>({});
   optionErrors = signal<Record<string, string>>({});
   hiddenOptionValues = signal<Record<string, Set<string>>>({});
-  contextFieldNames = signal<Set<string>>(new Set());
   filePreviews = signal<Record<string, FilePreviewEntry[]>>({});
   blurryWarnings = signal<Record<string, number | null>>({});
   analyzingImages = signal<Record<string, number | null>>({});
-  isContextField = (name: string) => this.contextFieldNames().has(name);
+  submittedValues = signal<Record<string, any> | null>(null);
+  optionLookup = signal<Record<string, Record<string, SelectOption>>>({});
+  payloadMode = signal<'value' | 'pair' | 'full'>('value');
+
+  aiResponse = signal<any | null>(null);
+
+  isContextField = (_name: string) => false;
 
   private valueChangesSub?: Subscription;
+  private lastLoadedFormKey: string | null = null;
 
   constructor(
     private formConfigService: FormConfigService,
@@ -101,29 +110,30 @@ export class PreviewStep implements OnInit, OnDestroy {
   }
 
   private loadFields(formId?: string | null, formName?: string | null) {
-    const fieldsData = this.formsService.getFormFields(formId, formName) || [];
-    const contextFields = this.getUserContextFields();
-    const mergedFields: FormField[] = [
-      ...contextFields.filter(
-        (ctx) => !fieldsData.some((f) => f.name === ctx.name),
-      ),
-      ...(fieldsData as FormField[]),
-    ];
+    const incomingKey = `${formId ?? ''}::${formName ?? ''}`;
+    if (this.lastLoadedFormKey === incomingKey && this.fields().length) {
+      return;
+    }
+    this.lastLoadedFormKey = incomingKey;
 
-    if (mergedFields && mergedFields.length > 0) {
-      this.contextFieldNames.set(new Set(contextFields.map((f) => f.name)));
+    const fieldsData = this.formsService.getFormFields(formId, formName) || [];
+    if (fieldsData && fieldsData.length > 0) {
       this.filePreviews.set({});
       this.blurryWarnings.set({});
       this.analyzingImages.set({});
-      this.fields.set(mergedFields as FormField[]);
+      this.optionLookup.set({});
+      this.fields.set(fieldsData as FormField[]);
       this.formConfigService.setFields(this.fields());
       this.buildForm();
+      this.syncStaticOptionLookup();
       this.loadDynamicOptions();
       this.applyRules();
+      this.updateLiveValuesFromForm();
       this.valueChangesSub?.unsubscribe();
-      this.valueChangesSub = this.previewForm.valueChanges.subscribe(() =>
-        this.applyRules(),
-      );
+      this.valueChangesSub = this.previewForm.valueChanges.subscribe(() => {
+        this.applyRules();
+        this.updateLiveValuesFromForm();
+      });
     } else {
       this.resetPreview();
     }
@@ -139,28 +149,13 @@ export class PreviewStep implements OnInit, OnDestroy {
     this.filePreviews.set({});
     this.blurryWarnings.set({});
     this.analyzingImages.set({});
+    this.submittedValues.set(null);
+    this.optionLookup.set({});
     this.valueChangesSub?.unsubscribe();
-  }
-
-  private getUserContextFields(): FormField[] {
-    const ctx =
-      this.formsService.getFormContext(this.formsService.getCurrentFormId()) ||
-      [];
-    return ctx.map((entry) => ({
-      label: entry.displayName || entry.key,
-      name: entry.key,
-      type: 'text',
-      required: true,
-      default: entry.value,
-    }));
   }
 
   private buildForm() {
     const group: { [key: string]: FormControl } = {};
-    const contextValues =
-      this.formsService.getFormContext(this.formsService.getCurrentFormId()) ||
-      [];
-
     this.fields().forEach((field) => {
       const validators: any[] = [];
 
@@ -201,13 +196,7 @@ export class PreviewStep implements OnInit, OnDestroy {
 
       // Set default value
       let defaultValue: any = '';
-      const ctxValue = contextValues.find(
-        (entry) => entry.key === field.name,
-      )?.value;
-
-      if (ctxValue !== undefined && ctxValue !== null) {
-        defaultValue = ctxValue;
-      } else if (
+      if (
         field.default !== undefined &&
         field.default !== null &&
         field.default !== ''
@@ -280,6 +269,25 @@ export class PreviewStep implements OnInit, OnDestroy {
           Object.keys(existingErrors).length ? existingErrors : null,
         );
       }
+
+      const hiddenOptions = evaluation.optionHides[field.name];
+      if (hiddenOptions && hiddenOptions.size) {
+        const currentValue = control.value;
+        if (Array.isArray(currentValue)) {
+          const filtered = currentValue.filter(
+            (v) => !hiddenOptions.has(String(v)),
+          );
+          if (filtered.length !== currentValue.length) {
+            control.setValue(filtered, { emitEvent: false });
+          }
+        } else if (
+          currentValue !== null &&
+          currentValue !== undefined &&
+          hiddenOptions.has(String(currentValue))
+        ) {
+          control.setValue('', { emitEvent: false });
+        }
+      }
     });
   }
 
@@ -333,7 +341,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     return '';
   }
 
-  getOptionsForField(field: FormField): { label: string; value: any }[] {
+  getOptionsForField(field: FormField): SelectOption[] {
     if (field.type !== 'select') return [];
     const hiddenSet =
       this.hiddenOptionValues()[field.name] || new Set<string>();
@@ -344,7 +352,7 @@ export class PreviewStep implements OnInit, OnDestroy {
       }
     }
     return (field.options || [])
-      .map((opt) => ({ label: opt, value: opt }))
+      .map((opt) => ({ label: opt, value: opt, raw: { key: opt, value: opt } }))
       .filter((opt) => !hiddenSet.has(String(opt.value)));
   }
 
@@ -386,7 +394,7 @@ export class PreviewStep implements OnInit, OnDestroy {
         const mapped = Array.isArray(list)
           ? list
               .map((item: any) => this.mapOption(item, field))
-              .filter((x): x is { label: string; value: any } => !!x)
+              .filter((x): x is SelectOption => !!x)
           : [];
         if (!mapped.length) {
           this.optionErrors.update((map) => ({
@@ -395,6 +403,8 @@ export class PreviewStep implements OnInit, OnDestroy {
           }));
         }
         this.selectOptions.update((map) => ({ ...map, [field.name]: mapped }));
+        this.updateOptionLookup(field.name, mapped);
+        this.updateLiveValuesFromForm();
         this.loadingOptions.update((map) => ({ ...map, [field.name]: false }));
       },
       error: () => {
@@ -421,10 +431,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     return current;
   }
 
-  private mapOption(
-    item: any,
-    field: FormField,
-  ): { label: string; value: any } | null {
+  private mapOption(item: any, field: FormField): SelectOption | null {
     if (!field.apiOptions) return null;
     const label = field.apiOptions.labelField
       ? item?.[field.apiOptions.labelField]
@@ -434,7 +441,7 @@ export class PreviewStep implements OnInit, OnDestroy {
       : item;
     const value = field.apiOptions.saveStrategy === 'label' ? label : rawValue;
     if (label === undefined || value === undefined) return null;
-    return { label: String(label), value };
+    return { label: String(label), value, raw: item };
   }
 
   private buildFileValidator(field: FormField): ValidatorFn {
@@ -474,7 +481,9 @@ export class PreviewStep implements OnInit, OnDestroy {
   }
 
   onSubmit() {
-    this.nextStep.emit(this.previewForm.getRawValue());
+    const payload = this.buildPayload();
+    this.submittedValues.set(this.buildDisplaySnapshot(payload));
+    this.nextStep.emit(payload);
   }
 
   onAiCommandChange(text: string) {
@@ -700,5 +709,101 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   private setAnalyzingImage(fieldName: string, index: number | null) {
     this.analyzingImages.update((map) => ({ ...map, [fieldName]: index }));
+  }
+
+  private buildPayload(): Record<string, any> {
+    const raw = this.previewForm.getRawValue() as Record<string, any>;
+    const payload: Record<string, any> = {};
+    this.fields().forEach((field) => {
+      const rawValue = raw[field.name] ?? '';
+      payload[field.name] = this.buildFieldValue(field, rawValue);
+    });
+    return payload;
+  }
+
+  private updateLiveValuesFromForm() {
+    if (!this.fields().length) {
+      this.submittedValues.set(null);
+      return;
+    }
+    this.submittedValues.set(this.buildDisplaySnapshot(this.buildPayload()));
+  }
+
+  setPayloadMode(mode: 'value' | 'pair' | 'full') {
+    this.payloadMode.set(mode);
+    this.updateLiveValuesFromForm();
+  }
+
+  private buildFieldValue(field: FormField, rawValue: any) {
+    if (field.type !== 'select') {
+      return rawValue;
+    }
+
+    const optionTable = this.optionLookup()[field.name] || {};
+    const mapValue = (val: any) => {
+      const opt = optionTable[String(val)];
+      if (this.payloadMode() === 'pair') {
+        return { key: val, value: opt?.label ?? val };
+      }
+      if (this.payloadMode() === 'full') {
+        return opt?.raw ?? opt ?? { key: val, value: val };
+      }
+      return val;
+    };
+
+    if (Array.isArray(rawValue)) {
+      return rawValue.map((v) => mapValue(v));
+    }
+
+    return mapValue(rawValue);
+  }
+
+  private buildDisplaySnapshot(payload: Record<string, any>) {
+    const display: Record<string, any> = {};
+    Object.entries(payload).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        display[key] = value.map((item) =>
+          item instanceof File ? item.name || 'file' : item,
+        );
+      } else if (value instanceof File) {
+        display[key] = value.name || 'file';
+      } else {
+        display[key] = value;
+      }
+    });
+    return display;
+  }
+
+  private syncStaticOptionLookup() {
+    const lookup: Record<string, Record<string, SelectOption>> = untracked(() =>
+      this.optionLookup(),
+    ) || {};
+    this.fields()
+      .filter((f) => f.type === 'select' && f.selectSource !== 'api')
+      .forEach((field) => {
+        const opts = (field.options || []).map((opt) => ({
+          label: opt,
+          value: opt,
+          raw: { key: opt, value: opt },
+        }));
+        this.updateOptionLookup(field.name, opts, lookup);
+      });
+    this.optionLookup.set({ ...lookup });
+  }
+
+  private updateOptionLookup(
+    fieldName: string,
+    options: SelectOption[],
+    base?: Record<string, Record<string, SelectOption>>,
+  ) {
+    const target = base ?? { ...untracked(() => this.optionLookup()) };
+    const table: Record<string, SelectOption> = {};
+    options.forEach((opt) => {
+      table[String(opt.value)] = opt;
+    });
+    target[fieldName] = table;
+    if (!base) {
+      this.optionLookup.set(target);
+    }
   }
 }

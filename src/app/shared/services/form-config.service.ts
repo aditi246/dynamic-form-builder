@@ -25,7 +25,13 @@ export interface RuleCondition {
 export type RuleAction =
   | { type: 'hide-field'; targetField: string }
   | { type: 'show-field'; targetField: string }
-  | { type: 'hide-options'; targetField: string; options: string[] }
+  | {
+      type: 'hide-options';
+      targetField: string;
+      options?: string[];
+      sourceField?: string; // legacy single-source support
+      sourceFields?: string[];
+    }
   | {
       type: 'enforce-comparison';
       targetField: string;

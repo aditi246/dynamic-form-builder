@@ -24,6 +24,7 @@ import {
 import { FormsManagementService } from '../../../shared/services/forms-management.service';
 import { FormField } from '../fields-step/fields-step';
 import { IconComponent } from '../../../components/icon/icon';
+import { ApiCacheService } from '../../../shared/services/api-cache.service';
 
 @Component({
   selector: 'app-rules-step',
@@ -79,6 +80,8 @@ export class RulesStep implements OnInit {
     thresholdField: new FormControl(''),
     thresholdOffset: new FormControl<string>(''),
     hideOptionValues: new FormControl<string[]>([]),
+    optionHideMode: new FormControl<'static' | 'source-field'>('static'),
+    optionSourceField: new FormControl<string[]>([]),
     errorMessage: new FormControl('Value must satisfy the rule'),
     visibilityBehavior: new FormControl<'hide' | 'show'>('hide', [
       Validators.required,
@@ -127,6 +130,7 @@ export class RulesStep implements OnInit {
     private formConfigService: FormConfigService,
     private formsService: FormsManagementService,
     private http: HttpClient,
+    private apiCacheService: ApiCacheService,
   ) {
     effect(() => {
       this.formsService.forms(); // react when fields list updates
@@ -161,18 +165,7 @@ export class RulesStep implements OnInit {
     });
 
     this.ruleForm.get('targetField')?.valueChanges.subscribe(() => {
-      const isSelect = this.isTargetSelect();
-      const actionCtrl = this.ruleForm.get('actionType');
-      const hideOptionsCtrl = this.ruleForm.get('hideOptionValues');
-      if (!isSelect && actionCtrl?.value === 'options') {
-        actionCtrl.setValue('validation');
-      }
-      if (isSelect) {
-        hideOptionsCtrl?.enable({ emitEvent: false });
-      } else {
-        hideOptionsCtrl?.disable({ emitEvent: false });
-        hideOptionsCtrl?.setValue([], { emitEvent: false });
-      }
+      this.updateOptionControlsAvailability();
     });
 
     this.ruleForm.get('thresholdType')?.valueChanges.subscribe((type) => {
@@ -184,11 +177,38 @@ export class RulesStep implements OnInit {
       this.syncThresholdValidators();
     });
 
-    this.ruleForm.get('actionType')?.valueChanges.subscribe(() => {
+    this.ruleForm.get('actionType')?.valueChanges.subscribe((action) => {
       this.syncThresholdValidators();
+      const sourceCtrl = this.ruleForm.get('optionSourceField');
+      if (action !== 'options') {
+        sourceCtrl?.clearValidators();
+        sourceCtrl?.updateValueAndValidity({ emitEvent: false });
+      } else if (this.ruleForm.value.optionHideMode === 'source-field') {
+        sourceCtrl?.setValidators([Validators.required]);
+        sourceCtrl?.updateValueAndValidity({ emitEvent: false });
+      }
+      this.updateOptionControlsAvailability();
+    });
+
+    this.ruleForm.get('optionHideMode')?.valueChanges.subscribe((mode) => {
+      const sourceCtrl = this.ruleForm.get('optionSourceField');
+      if (mode === 'source-field') {
+        this.ruleForm
+          .get('hideOptionValues')
+          ?.setValue([], { emitEvent: false });
+        sourceCtrl?.setValidators([Validators.required]);
+      } else {
+        this.ruleForm
+          .get('optionSourceField')
+          ?.setValue([], { emitEvent: false });
+        sourceCtrl?.clearValidators();
+      }
+      sourceCtrl?.updateValueAndValidity({ emitEvent: false });
+      this.updateOptionControlsAvailability();
     });
 
     this.syncThresholdValidators();
+    this.updateOptionControlsAvailability();
   }
 
   ngOnInit() {
@@ -263,10 +283,27 @@ export class RulesStep implements OnInit {
         alert('Hide options is only available for select fields.');
         return;
       }
+      const hideMode = formValue.optionHideMode || 'static';
+      const sourceFields =
+        hideMode === 'source-field'
+          ? this.normalizeSourceFields(formValue.optionSourceField)
+          : [];
+      if (hideMode === 'source-field' && sourceFields.length === 0) {
+        this.ruleForm.get('optionSourceField')?.setErrors({ required: true });
+        this.ruleForm.get('optionSourceField')?.markAsTouched();
+        this.ruleForm.get('optionSourceField')?.markAsDirty();
+        return;
+      }
       action = {
         type: 'hide-options',
         targetField,
-        options: formValue.hideOptionValues || [],
+        options: hideMode === 'static' ? formValue.hideOptionValues || [] : [],
+        sourceFields: hideMode === 'source-field' ? sourceFields : undefined,
+        // keep legacy single-source for backward compatibility with existing saved rules
+        sourceField:
+          hideMode === 'source-field'
+            ? sourceFields[0] || undefined
+            : undefined,
       };
     } else {
       const comparator = this.getComparatorForTarget(
@@ -323,6 +360,13 @@ export class RulesStep implements OnInit {
       action,
     };
 
+    if (this.isDuplicateRule(rule, this.editingRuleId() || undefined)) {
+      alert(
+        'A rule with the same conditions and action already exists for this target.',
+      );
+      return;
+    }
+
     if (this.editingRuleId()) {
       this.formConfigService.updateRule(this.editingRuleId()!, rule);
     } else {
@@ -371,7 +415,18 @@ export class RulesStep implements OnInit {
             : ''
           : '',
       hideOptionValues:
-        rule.action.type === 'hide-options' ? rule.action.options : [],
+        rule.action.type === 'hide-options' ? rule.action.options || [] : [],
+      optionHideMode:
+        rule.action.type === 'hide-options' &&
+        ((rule.action.sourceFields && rule.action.sourceFields.length) ||
+          rule.action.sourceField)
+          ? 'source-field'
+          : 'static',
+      optionSourceField:
+        rule.action.type === 'hide-options'
+          ? rule.action.sourceFields ||
+            (rule.action.sourceField ? [rule.action.sourceField] : [])
+          : [],
       errorMessage:
         rule.action.type === 'enforce-comparison'
           ? rule.action.errorMessage || ''
@@ -406,6 +461,18 @@ export class RulesStep implements OnInit {
     }
 
     if (rule.action.type === 'hide-options') {
+      const sources =
+        rule.action.sourceFields && rule.action.sourceFields.length
+          ? rule.action.sourceFields
+          : rule.action.sourceField
+            ? [rule.action.sourceField]
+            : [];
+      if (sources.length) {
+        const labels = sources
+          .map((field) => this.getFieldLabel(field))
+          .join(', ');
+        return `${conditions} -> Hide value(s) selected in ${labels} from ${this.getFieldLabel(rule.action.targetField)}`;
+      }
       const opts = (rule.action.options || []).join(', ');
       return `${conditions} -> Hide options [${opts}] from ${this.getFieldLabel(rule.action.targetField)}`;
     }
@@ -456,6 +523,13 @@ export class RulesStep implements OnInit {
 
   formFieldsList(): FormField[] {
     return this.fields().filter((f) => f.type === 'select');
+  }
+
+  optionSourceFields(): FormField[] {
+    const target = this.ruleForm.value.targetField;
+    return this.fields().filter(
+      (f) => f.type === 'select' && f.name !== target,
+    );
   }
 
   getOptionLabel(optValue: any): string {
@@ -532,6 +606,8 @@ export class RulesStep implements OnInit {
       visibilityBehavior: 'hide',
       errorMessage: 'Value must satisfy the rule',
       targetField: keepTargetField ?? '',
+      optionHideMode: 'static',
+      optionSourceField: [],
     });
     this.conditionDraft.reset({ operator: 'equals' });
     this.conditions.set([]);
@@ -580,7 +656,22 @@ export class RulesStep implements OnInit {
       .forEach((f) => this.fetchOptions(f));
   }
 
-  private fetchOptions(field: FormField) {
+  clearApiCache() {
+    this.apiCacheService.clear();
+    this.selectOptions.set({});
+    this.refreshAllOptions();
+  }
+
+  refreshAllOptions() {
+    this.fields()
+      .filter(
+        (f) =>
+          f.type === 'select' && f.selectSource === 'api' && f.apiOptions?.url,
+      )
+      .forEach((f) => this.fetchOptions(f, true));
+  }
+
+  private fetchOptions(field: FormField, forceRefresh = false) {
     if (!field.apiOptions?.url) return;
     this.loadingOptions.update((map) => ({ ...map, [field.name]: true }));
     this.optionErrors.update((map) => {
@@ -588,6 +679,19 @@ export class RulesStep implements OnInit {
       delete copy[field.name];
       return copy;
     });
+
+    const config = this.getApiConfig(field);
+    if (!forceRefresh) {
+      const cached = this.apiCacheService.get(config);
+      if (cached) {
+        this.selectOptions.update((map) => ({ ...map, [field.name]: cached }));
+        this.loadingOptions.update((map) => ({
+          ...map,
+          [field.name]: false,
+        }));
+        return;
+      }
+    }
 
     this.http.get(field.apiOptions.url).subscribe({
       next: (res: any) => {
@@ -604,6 +708,7 @@ export class RulesStep implements OnInit {
           }));
         }
         this.selectOptions.update((map) => ({ ...map, [field.name]: mapped }));
+        this.apiCacheService.set(config, mapped);
         this.loadingOptions.update((map) => ({ ...map, [field.name]: false }));
       },
       error: () => {
@@ -646,10 +751,120 @@ export class RulesStep implements OnInit {
     return { label: String(label), value };
   }
 
+  private getApiConfig(field: FormField) {
+    return {
+      url: field.apiOptions?.url || '',
+      itemsPath: field.apiOptions?.itemsPath || '',
+      labelField: field.apiOptions?.labelField || '',
+      valueField: field.apiOptions?.valueField || '',
+      saveStrategy: field.apiOptions?.saveStrategy || 'value',
+    };
+  }
+
+  private updateOptionControlsAvailability() {
+    const isSelect = this.isTargetSelect();
+    const actionCtrl = this.ruleForm.get('actionType');
+    const hideOptionsCtrl = this.ruleForm.get('hideOptionValues');
+    const optionSourceCtrl = this.ruleForm.get('optionSourceField');
+    const optionModeCtrl = this.ruleForm.get('optionHideMode');
+    const target = this.ruleForm.value.targetField;
+
+    if (optionSourceCtrl && target) {
+      const currentSources = this.normalizeSourceFields(optionSourceCtrl.value);
+      const filteredSources = currentSources.filter((s) => s !== target);
+      if (filteredSources.length !== currentSources.length) {
+        optionSourceCtrl.setValue(filteredSources, { emitEvent: false });
+      }
+    }
+
+    if (!isSelect && actionCtrl?.value === 'options') {
+      actionCtrl.setValue('validation');
+    }
+
+    if (isSelect) {
+      hideOptionsCtrl?.enable({ emitEvent: false });
+      optionSourceCtrl?.enable({ emitEvent: false });
+      optionModeCtrl?.enable({ emitEvent: false });
+    } else {
+      hideOptionsCtrl?.disable({ emitEvent: false });
+      hideOptionsCtrl?.setValue([], { emitEvent: false });
+      optionSourceCtrl?.disable({ emitEvent: false });
+      optionSourceCtrl?.setValue([], { emitEvent: false });
+      optionModeCtrl?.disable({ emitEvent: false });
+      optionModeCtrl?.setValue('static', { emitEvent: false });
+    }
+  }
+
+  private normalizeSourceFields(value: any): string[] {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value.filter((v) => !!v);
+    }
+    return [value].filter((v) => !!v);
+  }
+
   private parseThresholdValue(input: any, targetType?: string): any {
     if (input === null || input === undefined || input === '') return undefined;
     if (targetType === 'number') return this.toNumber(input);
     return input;
+  }
+
+  private isDuplicateRule(rule: CustomRule, ignoreId?: string): boolean {
+    const normalized = this.normalizeRule(rule);
+    return this.formConfigService
+      .rules()
+      .some(
+        (existing) =>
+          existing.id !== ignoreId &&
+          this.normalizeRule(existing) === normalized,
+      );
+  }
+
+  private normalizeRule(rule: CustomRule): string {
+    const normalizedConditions = [...(rule.conditions || [])]
+      .map((c) => ({
+        field: c.field,
+        operator: c.operator,
+        value: c.value ?? null,
+        values: c.values ? [...c.values].sort() : null,
+      }))
+      .sort((a, b) =>
+        (a.field + a.operator).localeCompare(b.field + b.operator),
+      );
+
+    const action = rule.action;
+    let normalizedAction: any = {
+      type: action.type,
+      target: action.targetField,
+    };
+
+    if (action.type === 'hide-options') {
+      const sources =
+        action.sourceFields && action.sourceFields.length
+          ? action.sourceFields
+          : action.sourceField
+            ? [action.sourceField]
+            : [];
+      normalizedAction = {
+        ...normalizedAction,
+        options: (action.options || []).slice().sort(),
+        sources: sources.slice().sort(),
+      };
+    } else if (action.type === 'enforce-comparison') {
+      normalizedAction = {
+        ...normalizedAction,
+        comparator: action.comparator,
+        valueSource: action.valueSource,
+        value: action.value ?? null,
+        otherField: action.otherField ?? null,
+        offset: action.offset ?? null,
+      };
+    }
+
+    return JSON.stringify({
+      conditions: normalizedConditions,
+      action: normalizedAction,
+    });
   }
 
   private getComparatorForTarget(

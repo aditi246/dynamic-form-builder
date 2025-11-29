@@ -17,6 +17,7 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
   finalText: string = '';
   isRecording = signal<boolean>(false);
   isProcessing = signal<boolean>(false);
+  isAiProcessing = signal<boolean>(false);
   selectedFile = signal<File | null>(null);
   recognition: any = null;
 
@@ -90,9 +91,10 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
     try {
       this.isRecording.set(true);
       this.isProcessing.set(true);
-      // Reset final text when starting new recording
-      this.textValue.set('');
-      this.finalText = '';
+      // Don't reset - append to existing text when starting new recording
+      // Only reset finalText for the current recording session
+      const currentText = this.textValue();
+      this.finalText = currentText;
       this.recognition.start();
     } catch (error) {
       console.error('Error starting recording:', error);
@@ -116,7 +118,15 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
   }
 
   fillWithAI() {
+    if (this.isAiProcessing()) {
+      return; // Prevent multiple clicks while processing
+    }
+    this.isAiProcessing.set(true);
     this.textChange.emit(this.textValue());
+  }
+
+  setAiProcessingComplete() {
+    this.isAiProcessing.set(false);
   }
 
   onFileSelected(event: Event) {
@@ -131,5 +141,17 @@ export class AudioTextareaComponent implements OnInit, OnDestroy {
 
   removeFile() {
     this.selectedFile.set(null);
+  }
+
+  clearAll() {
+    this.textValue.set('');
+    this.finalText = '';
+    this.selectedFile.set(null);
+    this.isAiProcessing.set(false);
+    if (this.recognition && this.isRecording()) {
+      this.recognition.stop();
+      this.isRecording.set(false);
+      this.isProcessing.set(false);
+    }
   }
 }

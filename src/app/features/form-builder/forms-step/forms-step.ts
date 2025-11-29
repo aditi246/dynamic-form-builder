@@ -24,10 +24,37 @@ export class FormsStep implements OnInit {
   nextStep = output<void>();
   backStep = output<void>();
   formSelected = output<string>(); // Emits form ID when a form is selected
+  startUserFill = output<{
+    formId: string;
+    userContext: SavedForm['userContext'];
+  }>();
+  editSubmission = output<{
+    formId: string;
+    submissionId: string;
+    values: Record<string, any>;
+    context: SavedForm['userContext'] | null;
+  }>();
 
   showCreateModal = signal<boolean>(false);
   showContextModal = signal<boolean>(false);
+  showFillModal = signal<boolean>(false);
   contextEditFormId = signal<string | null>(null);
+  fillFormId = signal<string | null>(null);
+  submissionsFormId = signal<string | null>(null);
+  submissions = signal<
+    {
+      id: string;
+      submittedAt: string;
+      values: Record<string, any>;
+      context: SavedForm['userContext'] | null;
+    }[]
+  >([]);
+  selectedSubmission = signal<{
+    id: string;
+    submittedAt: string;
+    values: Record<string, any>;
+    context: SavedForm['userContext'] | null;
+  } | null>(null);
 
   createFormGroup = new FormGroup({
     name: new FormControl('', [Validators.required, Validators.minLength(1)]),
@@ -36,6 +63,10 @@ export class FormsStep implements OnInit {
   });
 
   contextEditForm = new FormGroup({
+    userContextJson: new FormControl(''),
+  });
+
+  fillContextForm = new FormGroup({
     userContextJson: new FormControl(''),
   });
 
@@ -103,6 +134,34 @@ export class FormsStep implements OnInit {
     }
   }
 
+  openFillModal(form: SavedForm, event?: Event) {
+    event?.stopPropagation();
+    this.fillFormId.set(form.id);
+    const json =
+      form.userContext && form.userContext.length
+        ? JSON.stringify(form.userContext, null, 2)
+        : '';
+    this.fillContextForm.reset({ userContextJson: json });
+    this.showFillModal.set(true);
+  }
+
+  closeFillModal() {
+    this.fillFormId.set(null);
+    this.fillContextForm.reset({ userContextJson: '' });
+    this.showFillModal.set(false);
+  }
+
+  launchUserFill() {
+    const formId = this.fillFormId();
+    if (!formId) return;
+    const rawContext =
+      this.fillContextForm.get('userContextJson')?.value?.trim() || '';
+    const parsedContext =
+      (rawContext ? this.parseUserContext(rawContext) : []) || [];
+    this.startUserFill.emit({ formId, userContext: parsedContext });
+    this.closeFillModal();
+  }
+
   updateUserContext() {
     const formId = this.contextEditFormId();
     if (!formId) return;
@@ -121,6 +180,35 @@ export class FormsStep implements OnInit {
   selectForm(formId: string) {
     this.formsService.setCurrentForm(formId);
     this.formSelected.emit(formId);
+  }
+
+  viewSubmissions(event: Event, form: SavedForm) {
+    event.stopPropagation();
+    this.submissionsFormId.set(form.id);
+    const data = this.formsService.getUserSubmissions(form.id);
+    this.submissions.set(data);
+    this.selectedSubmission.set(data.length ? data[0] : null);
+  }
+
+  selectSubmission(entry: {
+    id: string;
+    submittedAt: string;
+    values: Record<string, any>;
+    context: SavedForm['userContext'] | null;
+  }) {
+    this.selectedSubmission.set(entry);
+  }
+
+  editSelectedSubmission() {
+    const formId = this.submissionsFormId();
+    const entry = this.selectedSubmission();
+    if (!formId || !entry) return;
+    this.editSubmission.emit({
+      formId,
+      submissionId: entry.id,
+      values: entry.values,
+      context: entry.context || null,
+    });
   }
 
   deleteForm(event: Event, formId: string) {

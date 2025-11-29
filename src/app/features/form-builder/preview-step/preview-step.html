@@ -12,15 +12,15 @@
       </div>
 
       <div class="flex items-center justify-between mb-6">
-      <h2 class="text-lg font-semibold text-text">Form Preview</h2>
-      <button
-        type="button"
-        (click)="resetForm()"
-        class="px-4 py-2 border border-border rounded-md hover:bg-bg font-medium flex items-center gap-2 transition-colors text-text"
-      >
-        Reset 
-      </button>
-    </div>
+        <h2 class="text-lg font-semibold text-text">Form Preview</h2>
+        <button
+          type="button"
+          (click)="resetForm()"
+          class="px-4 py-2 border border-border rounded-md hover:bg-bg font-medium flex items-center gap-2 transition-colors text-text"
+        >
+          Reset
+        </button>
+      </div>
 
       <form
         [formGroup]="previewForm"
@@ -158,7 +158,9 @@
     </div>
 
     <!-- Voice/AI and response (40%) -->
-    <div class="w-[40%] flex flex-col gap-4 min-h-0 h-[calc(100vh-260px)]">
+    <div
+      class="w-[40%] flex flex-col gap-4 min-h-0 h-[calc(100vh-260px)] overflow-hidden"
+    >
       <div class="bg-card rounded-md shadow-sm p-6 border border-border">
         <h2 class="text-lg font-semibold text-text mb-4">
           Voice or AI command
@@ -172,7 +174,7 @@
       </div>
 
       <div
-        class="bg-card rounded-md shadow-sm p-6 border border-border flex-1 min-h-0 flex flex-col"
+        class="bg-card rounded-md shadow-sm p-6 border border-border flex-1 min-h-0 flex flex-col overflow-hidden"
       >
         <div class="flex items-center justify-between mb-3">
           <div>

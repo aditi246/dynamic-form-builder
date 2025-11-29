@@ -103,14 +103,6 @@
                   </button>
                   <button
                     type="button"
-                    (click)="openContextModal(form, $event)"
-                    class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
-                    title="Update user data"
-                  >
-                    <app-icon name="user" class="w-4 h-4"></app-icon>
-                  </button>
-                  <button
-                    type="button"
                     (click)="openFillModal(form, $event)"
                     class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
                     title="Fill form as user"
@@ -266,41 +258,6 @@
           <p class="text-sm text-danger mt-1">Form name is required</p>
           }
         </div>
-        <div class="flex items-start gap-3">
-          <input
-            type="checkbox"
-            formControlName="provideContext"
-            id="provideContext"
-            class="mt-1 w-4 h-4 text-primary border-border rounded"
-          />
-          <div class="flex flex-col">
-            <label for="provideContext" class="text-sm font-medium text-text"
-              >Do you want to provide input data?</label
-            >
-            <p class="text-xs text-muted">
-              If yes, paste a JSON array of key/displayName/value entries (e.g.,
-              user type, location, gender). If no, we'll use an empty context.
-            </p>
-          </div>
-        </div>
-        @if (createFormGroup.get('provideContext')?.value) {
-        <div>
-          <label class="block text-sm font-medium text-text mb-2"
-            >Context JSON</label
-          >
-          <textarea
-            formControlName="userContextJson"
-            rows="4"
-            placeholder='[{"key":"1","displayName":"User Type","value":"Admin"},{"key":"2","displayName":"Location","value":"India"}]'
-            class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
-          ></textarea>
-          <p class="text-xs text-muted mt-1">
-            Example: [{{ '{' }}"key":"1","displayName":"User
-            Type","value":"Admin"{{ '}' }}, {{ '{'
-            }}"key":"2","displayName":"Location","value":"India"{{ '}' }}]
-          </p>
-        </div>
-        }
         <div class="flex justify-end gap-3">
           <button
             type="button"
@@ -319,53 +276,6 @@
       </form>
     </div>
   </div>
-  } @if (showContextModal()) {
-  <div
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    (click)="closeContextModal()"
-  >
-    <div
-      class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border"
-      (click)="$event.stopPropagation()"
-    >
-      <h3 class="text-xl font-semibold text-text mb-4">Update user data</h3>
-      <p class="text-xs text-muted mb-3">
-        Enter JSON array of {{ '{' }} key, displayName, value {{ '}' }}.
-        Existing values are prefilled.
-      </p>
-      <form
-        [formGroup]="contextEditForm"
-        (ngSubmit)="updateUserContext()"
-        class="space-y-4"
-      >
-        <div>
-          <label class="block text-sm font-medium text-text mb-2"
-            >Context JSON</label
-          >
-          <textarea
-            formControlName="userContextJson"
-            rows="6"
-            class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
-          ></textarea>
-        </div>
-        <div class="flex justify-end gap-3">
-          <button
-            type="button"
-            (click)="closeContextModal()"
-            class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium"
-          >
-            Save
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
   } @if (showFillModal()) {
   <div
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -377,25 +287,34 @@
     >
       <h3 class="text-xl font-semibold text-text mb-2">Fill form as a user</h3>
       <p class="text-xs text-muted mb-4">
-        Optional: paste a JSON array of {{ '{' }} key, displayName, value {{ '}'
-        }} to act as this user's context while filling the form.
+        Provide user context values for this session. Leave blank to skip.
       </p>
       <form
         [formGroup]="fillContextForm"
         (ngSubmit)="launchUserFill()"
         class="space-y-4"
       >
-        <div>
-          <label class="block text-sm font-medium text-text mb-2"
-            >User context</label
-          >
-          <textarea
-            formControlName="userContextJson"
-            rows="6"
-            class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
-            placeholder='[{"key":"location","displayName":"Location","value":"NYC"}]'
-          ></textarea>
+        @if ((fillContextDefs() ?? []).length === 0) {
+        <div class="text-sm text-muted">
+          No user context defined for this form. You can still continue.
         </div>
+        } @else {
+        <div class="space-y-3 max-h-[360px] overflow-auto pr-1">
+          @for (ctx of fillContextDefs() ?? []; track ctx.key) {
+          <div class="space-y-1">
+            <label class="block text-sm font-medium text-text">
+              {{ ctx.displayName || ctx.key }}
+            </label>
+            <input
+              [formControlName]="ctx.key"
+              type="text"
+              class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              [placeholder]="ctx.displayName || ctx.key"
+            />
+          </div>
+          }
+        </div>
+        }
         <div class="flex justify-end gap-3">
           <button
             type="button"

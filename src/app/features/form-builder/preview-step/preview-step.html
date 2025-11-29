@@ -4,13 +4,6 @@
     <div
       class="w-[60%] bg-card rounded-md shadow-sm p-6 border border-border flex flex-col min-h-0 h-[calc(100vh-260px)]"
     >
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-lg font-semibold text-text">Form Preview</h2>
-          <p class="text-sm text-muted">Review the fields before submitting.</p>
-        </div>
-      </div>
-
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-lg font-semibold text-text">Form Preview</h2>
         <button
@@ -94,19 +87,7 @@
           } @else if (!isOptionsLoading(field.name) &&
           getOptionsForField(field).length === 0) {
           <p class="text-sm text-muted mt-1">No options available.</p>
-          }
-          <div class="text-right">
-            @if (field.selectSource === 'api') {
-            <button
-              type="button"
-              (click)="refreshOptions(field)"
-              class="text-xs text-primary hover:underline"
-            >
-              Refresh options
-            </button>
-            }
-          </div>
-          @if (isFieldInvalid(field.name)) {
+          } @if (isFieldInvalid(field.name)) {
           <p class="text-sm text-danger mt-1">
             {{ getFieldError(field.name) }}
           </p>
@@ -158,54 +139,56 @@
     </div>
 
     <!-- Voice/AI and response (40%) -->
-    <div
-      class="w-[40%] flex flex-col gap-4 min-h-0 h-[calc(100vh-260px)] overflow-hidden"
-    >
-      <div class="bg-card rounded-md shadow-sm p-6 border border-border">
-        <h2 class="text-lg font-semibold text-text mb-4">
-          Voice or AI command
-        </h2>
-        <app-audio-textarea
-          #audioTextarea
-          (textChange)="onAiCommandChange($event)"
-          (fileUpload)="onFileUpload($event)"
-        >
-        </app-audio-textarea>
-      </div>
-
+    <div class="w-[40%] min-h-0 h-[calc(100vh-260px)]">
       <div
-        class="bg-card rounded-md shadow-sm p-6 border border-border flex-1 min-h-0 flex flex-col overflow-hidden"
+        class="bg-card rounded-md shadow-sm border border-border h-full flex flex-col overflow-hidden"
       >
-        <div class="flex items-center justify-between mb-3">
-          <div>
-            <h2 class="text-lg font-semibold text-text">Form response</h2>
-            <p class="text-sm text-muted">Live form values.</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-xs text-muted">Payload</label>
-            <select
-              class="px-2 py-1 text-sm border border-border rounded-md bg-card text-text"
-              [value]="payloadMode()"
-              (change)="setPayloadMode($any($event.target).value)"
+        <div class="overflow-auto flex-1 divide-y divide-border">
+          <div class="p-6">
+            <h2 class="text-lg font-semibold text-text mb-4">
+              Voice or AI command
+            </h2>
+            <app-audio-textarea
+              #audioTextarea
+              (textChange)="onAiCommandChange($event)"
+              (fileUpload)="onFileUpload($event)"
             >
-              <option value="value">Value only</option>
-              <option value="pair">Key + value</option>
-              <option value="full">Full option object</option>
-            </select>
+            </app-audio-textarea>
           </div>
-        </div>
-        <div
-          class="border border-dashed border-border rounded-md p-4 bg-bg flex-1 min-h-[160px] overflow-auto"
-        >
-          @if (submittedValues()) {
-          <pre class="text-xs text-text whitespace-pre-wrap break-words">
+
+          <div class="p-6 flex flex-col min-h-[240px] gap-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold text-text">Form response</h2>
+                <p class="text-sm text-muted">Live form values.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-muted">Payload</label>
+                <select
+                  class="px-2 py-1 text-sm border border-border rounded-md bg-card text-text"
+                  [value]="payloadMode()"
+                  (change)="setPayloadMode($any($event.target).value)"
+                >
+                  <option value="value">Value only</option>
+                  <option value="pair">Key + value</option>
+                  <option value="full">Full option object</option>
+                </select>
+              </div>
+            </div>
+            <div
+              class="border border-dashed border-border rounded-md p-4 bg-bg flex-1 min-h-[160px] overflow-auto"
+            >
+              @if (submittedValues()) {
+              <pre class="text-xs text-text whitespace-pre-wrap break-words">
 {{ submittedValues() | json }}</pre
-          >
-          } @else {
-          <p class="text-sm text-muted">
-            Submit the form to see captured values here.
-          </p>
-          }
+              >
+              } @else {
+              <p class="text-sm text-muted">
+                Submit the form to see captured values here.
+              </p>
+              }
+            </div>
+          </div>
         </div>
       </div>
     </div>

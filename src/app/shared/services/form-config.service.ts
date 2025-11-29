@@ -103,6 +103,14 @@ export class FormConfigService {
     this.updateFormRuleCount();
   }
 
+  removeRulesByIds(ids: string[]): void {
+    if (!ids || !ids.length) return;
+    const idSet = new Set(ids);
+    this.rules.update((rules) => rules.filter((r) => !idSet.has(r.id)));
+    this.saveRules();
+    this.updateFormRuleCount();
+  }
+
   clearRules(): void {
     this.rules.set([]);
     this.saveRules();

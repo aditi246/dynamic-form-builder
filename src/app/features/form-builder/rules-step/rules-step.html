@@ -16,6 +16,13 @@
         <div class="flex items-center gap-2">
           <button
             type="button"
+            (click)="openContextModal()"
+            class="px-2 py-1 text-xs border border-border rounded-md text-text hover:bg-bg"
+          >
+            User context
+          </button>
+          <button
+            type="button"
             (click)="expandAllGroups()"
             class="px-2 py-1 text-xs border border-border rounded-md text-text hover:bg-bg"
           >
@@ -639,3 +646,103 @@
     </form>
   </div>
 </div>
+
+@if (showContextModal()) {
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+  (click)="closeContextModal()"
+>
+  <div
+    class="bg-card rounded-md shadow-lg p-6 max-w-2xl w-full mx-4 border border-border"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h3 class="text-xl font-semibold text-text">User context</h3>
+        <p class="text-xs text-muted">
+          Define context fields users can fill before submitting the form.
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="addContextRow()"
+        class="px-3 py-1.5 text-xs border border-border rounded-md text-text hover:bg-bg"
+      >
+        Add field
+      </button>
+    </div>
+
+    <form
+      [formGroup]="contextFormGroup"
+      (ngSubmit)="saveContextRows()"
+      class="space-y-4"
+    >
+      <div
+        formArrayName="entries"
+        class="space-y-3 max-h-96 overflow-auto pr-1"
+      >
+        @for (group of contextForm.controls; let i = $index; track i) {
+        <div
+          class="grid grid-cols-12 gap-3 items-start border border-border rounded-md p-3 bg-bg"
+          [formGroupName]="i"
+        >
+          <div class="col-span-4">
+            <label class="text-sm text-text font-medium">Key</label>
+            <input
+              type="text"
+              formControlName="key"
+              class="w-full mt-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              placeholder="role"
+            />
+          </div>
+          <div class="col-span-4">
+            <label class="text-sm text-text font-medium">Display name</label>
+            <input
+              type="text"
+              formControlName="displayName"
+              class="w-full mt-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              placeholder="Role"
+            />
+          </div>
+          <div class="col-span-3">
+            <label class="text-sm text-text font-medium">Default value</label>
+            <input
+              type="text"
+              formControlName="value"
+              class="w-full mt-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+              placeholder="Admin"
+            />
+          </div>
+          <div class="col-span-1 flex justify-end pt-6">
+            <button
+              type="button"
+              (click)="removeContextRow(i)"
+              class="p-2 text-muted hover:text-danger transition-colors"
+              title="Remove"
+            >
+              <app-icon name="delete" class="w-5 h-5"></app-icon>
+            </button>
+          </div>
+        </div>
+        }
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button
+          type="button"
+          (click)="closeContextModal()"
+          class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium"
+        >
+          Save context
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+}

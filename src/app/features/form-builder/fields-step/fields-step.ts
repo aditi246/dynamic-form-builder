@@ -19,6 +19,7 @@ import { IconComponent } from '../../../components/icon/icon';
 import { DefaultsComponent } from '../../../components/defaults/defaults';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { ApiCacheService } from '../../../shared/services/api-cache.service';
+import { BuilderTourService } from '../tutorial/builder-tour.service';
 
 export interface FormField {
   label: string;
@@ -151,6 +152,7 @@ export class FieldsStep {
     private formsService: FormsManagementService,
     private http: HttpClient,
     private apiCacheService: ApiCacheService,
+    private tour: BuilderTourService,
   ) {
     effect(() => {
       const formId = this.formsService.getCurrentFormId();
@@ -279,6 +281,48 @@ export class FieldsStep {
         }
       }
     });
+
+    effect(() => {
+      const step = this.tour.currentStep();
+      if (!this.tour.isActive() || !step) return;
+      const isSelectStep =
+        step.id === 'fields-manual' ||
+        step.id === 'fields-api' ||
+        step.id === 'fields-api-reuse';
+
+      if (isSelectStep) {
+        if (!this.tourOriginalType) {
+          this.tourOriginalType = this.fieldForm.get('type')?.value || 'text';
+        }
+        this.ensureSelectType();
+        if (step.id === 'fields-manual') {
+          this.fieldForm.patchValue(
+            { selectSource: 'manual', apiMode: 'new' },
+            { emitEvent: true },
+          );
+        } else if (step.id === 'fields-api') {
+          this.fieldForm.patchValue(
+            { selectSource: 'api', apiMode: 'new' },
+            { emitEvent: true },
+          );
+        } else if (step.id === 'fields-api-reuse') {
+          this.fieldForm.patchValue(
+            { selectSource: 'api', apiMode: 'reuse' },
+            { emitEvent: true },
+          );
+        }
+      } else if (this.tourOriginalType) {
+        this.fieldForm.get('type')?.setValue(this.tourOriginalType);
+        this.tourOriginalType = null;
+      }
+    });
+
+    effect(() => {
+      if (!this.tour.isActive() && this.tourOriginalType) {
+        this.fieldForm.get('type')?.setValue(this.tourOriginalType);
+        this.tourOriginalType = null;
+      }
+    });
   }
 
   isSelectType = computed(() => this.currentType() === 'select');
@@ -288,6 +332,14 @@ export class FieldsStep {
   isFileType = computed(() => this.currentType() === 'file');
 
   hasRegexPattern = signal<boolean>(false);
+
+  private tourOriginalType: string | null = null;
+
+  private ensureSelectType() {
+    if (this.currentType() !== 'select') {
+      this.fieldForm.get('type')?.setValue('select');
+    }
+  }
 
   get defaultControl(): FormControl | null {
     return this.fieldForm.get('default') as FormControl | null;

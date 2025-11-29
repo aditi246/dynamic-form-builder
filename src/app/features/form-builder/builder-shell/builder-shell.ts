@@ -1,4 +1,11 @@
-import { Component, ViewChild, computed, effect, signal } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ViewChild,
+  computed,
+  effect,
+  signal,
+} from '@angular/core';
 import { FormsStep } from '../forms-step/forms-step';
 import { FieldsStep } from '../fields-step/fields-step';
 import { RulesStep } from '../rules-step/rules-step';
@@ -7,15 +14,18 @@ import {
   FormsManagementService,
   SavedForm,
 } from '../../../shared/services/forms-management.service';
+import { BuilderTourOverlay } from '../tutorial/builder-tour-overlay';
+import { BuilderTourService } from '../tutorial/builder-tour.service';
 
 @Component({
   selector: 'app-builder-shell',
   standalone: true,
-  imports: [FormsStep, FieldsStep, RulesStep, PreviewStep],
+  imports: [FormsStep, FieldsStep, RulesStep, PreviewStep, BuilderTourOverlay],
   templateUrl: './builder-shell.html',
 })
-export class BuilderShell {
+export class BuilderShell implements AfterViewInit {
   @ViewChild('previewCmp') previewCmp?: PreviewStep;
+  @ViewChild('formsCmp') formsCmp?: FormsStep;
   currentStep = signal<'forms' | 'fields' | 'rules' | 'preview'>('forms');
   formEngaged = signal<boolean>(false);
   userFillMode = signal<boolean>(false);
@@ -26,7 +36,14 @@ export class BuilderShell {
     () => this.formEngaged() && !!this.formsService.currentFormId(),
   );
 
-  constructor(public formsService: FormsManagementService) {
+  constructor(
+    public formsService: FormsManagementService,
+    public tour: BuilderTourService,
+  ) {
+    effect(() => {
+      this.tour.setShellStep(this.currentStep());
+    });
+
     effect(() => {
       const currentForm = this.formsService.currentFormId();
       if (!currentForm) {
@@ -39,16 +56,25 @@ export class BuilderShell {
     });
   }
 
-  goToStep(step: 'forms' | 'fields' | 'rules' | 'preview') {
+  ngAfterViewInit() {
+    // No auto-start; tutorial runs only when the user triggers it.
+  }
+
+  goToStep(
+    step: 'forms' | 'fields' | 'rules' | 'preview',
+    preserveState = false,
+  ) {
     if (this.userFillMode() && step !== 'forms' && step !== 'preview') {
       return;
     }
 
     if (step === 'forms') {
-      this.formsService.setCurrentForm(null);
-      this.formEngaged.set(false);
-      this.userFillMode.set(false);
-      this.formsService.clearActiveUserContext();
+      if (!preserveState) {
+        this.formsService.setCurrentForm(null);
+        this.formEngaged.set(false);
+        this.userFillMode.set(false);
+        this.formsService.clearActiveUserContext();
+      }
       this.currentStep.set('forms');
       return;
     }
@@ -179,5 +205,16 @@ export class BuilderShell {
       return !form || form.invalid;
     }
     return false;
+  }
+
+  startTour(force = false) {
+    if (this.currentStep() === 'forms' && this.formsCmp) {
+      const hasForms = (this.formsService.forms() || []).length > 0;
+      if (!hasForms) {
+        this.formsCmp.ensureMockDataForTour(() => this.tour.start(force));
+        return;
+      }
+    }
+    this.tour.start(force);
   }
 }

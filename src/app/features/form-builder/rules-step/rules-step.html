@@ -13,7 +13,10 @@
             All rules attached to the same target field stay together.
           </p>
         </div>
-        <div class="flex items-center gap-2">
+        <div
+          class="flex items-center gap-2"
+          data-tour-anchor="rules-user-context"
+        >
           <button
             type="button"
             (click)="openContextModal()"
@@ -111,6 +114,7 @@
     <form
       [formGroup]="ruleForm"
       class="w-[60%] bg-card rounded-md shadow-sm p-6 border border-border space-y-6 flex flex-col overflow-hidden min-h-0 h-[calc(100vh-260px)]"
+      data-tour-anchor="rules-builder"
     >
       <div class="flex items-center justify-between">
         <div>
@@ -119,7 +123,10 @@
             Stack conditions, then choose what happens to the target field.
           </p>
         </div>
-        <div class="flex flex-col gap-2 items-end">
+        <div
+          class="flex flex-col gap-2 items-end"
+          data-tour-anchor="rules-api-refresh"
+        >
           <div class="flex gap-2">
             <button
               type="button"
@@ -168,7 +175,10 @@
               }
             </div>
 
-            <div class="border border-border rounded-md p-4">
+            <div
+              class="border border-border rounded-md p-4"
+              data-tour-anchor="rules-compose"
+            >
               <div class="flex items-center justify-between mb-3">
                 <div>
                   <p class="text-sm font-semibold text-text">
@@ -351,7 +361,10 @@
               @if (isInvalid('actionType')) {
               <p class="text-xs text-danger mt-1">Please choose an action.</p>
               } @if (isValidationAction()) {
-              <div class="space-y-3 border border-border rounded-md p-4">
+              <div
+                class="space-y-3 border border-border rounded-md p-4"
+                data-tour-anchor="rules-validation"
+              >
                 <div class="grid grid-cols-2 gap-3">
                   <div>
                     <label class="block text-sm font-medium text-text mb-2"
@@ -495,7 +508,10 @@
                 </div>
               </div>
               } @else if (ruleForm.value.actionType === 'options') {
-              <div class="space-y-3 border border-border rounded-md p-4">
+              <div
+                class="space-y-3 border border-border rounded-md p-4"
+                data-tour-anchor="rules-hide-options"
+              >
                 <p class="text-sm text-text">
                   Control which options are visible for the target select.
                 </p>
@@ -592,7 +608,10 @@
                 }
               </div>
               } @else {
-              <div class="space-y-3 border border-border rounded-md p-4">
+              <div
+                class="space-y-3 border border-border rounded-md p-4"
+                data-tour-anchor="rules-visibility"
+              >
                 <label class="flex items-center gap-2 text-sm text-text">
                   <input
                     type="radio"

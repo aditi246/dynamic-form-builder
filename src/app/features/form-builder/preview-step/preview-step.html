@@ -3,6 +3,7 @@
     <!-- Form preview (60%) -->
     <div
       class="w-[60%] bg-card rounded-md shadow-sm p-6 border border-border flex flex-col min-h-0 h-[calc(100vh-260px)]"
+      data-tour-anchor="preview-pane"
     >
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-lg font-semibold text-text">Form Preview</h2>
@@ -144,7 +145,7 @@
         class="bg-card rounded-md shadow-sm border border-border h-full flex flex-col overflow-hidden"
       >
         <div class="overflow-auto flex-1 divide-y divide-border">
-          <div class="p-6">
+          <div class="p-6" data-tour-anchor="preview-ai">
             <h2 class="text-lg font-semibold text-text mb-4">
               Voice or AI command
             </h2>
@@ -157,7 +158,10 @@
           </div>
 
           <div class="p-6 flex flex-col min-h-[240px] gap-3">
-            <div class="flex items-center justify-between">
+            <div
+              class="flex items-center justify-between"
+              data-tour-anchor="preview-payload"
+            >
               <div>
                 <h2 class="text-lg font-semibold text-text">Form response</h2>
                 <p class="text-sm text-muted">Live form values.</p>

@@ -7,6 +7,7 @@ import {
   effect,
   untracked,
   ViewChild,
+  input,
 } from '@angular/core';
 import {
   AbstractControl,
@@ -60,6 +61,7 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   nextStep = output<Record<string, any>>();
   backStep = output<void>();
+  initialValues = input<Record<string, any> | null>(null);
 
   fields = signal<FormField[]>([]);
   previewForm = new FormGroup({});
@@ -81,6 +83,7 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   private valueChangesSub?: Subscription;
   private lastLoadedFormKey: string | null = null;
+  private lastPatchedInitialKey: string | null = null;
 
   constructor(
     private formConfigService: FormConfigService,
@@ -98,6 +101,11 @@ export class PreviewStep implements OnInit, OnDestroy {
       } else {
         this.resetPreview();
       }
+    });
+
+    effect(() => {
+      this.initialValues();
+      this.applyInitialValues();
     });
   }
 
@@ -125,6 +133,7 @@ export class PreviewStep implements OnInit, OnDestroy {
       this.blurryWarnings.set({});
       this.analyzingImages.set({});
       this.optionLookup.set({});
+      this.lastPatchedInitialKey = null;
       this.fields.set(fieldsData as FormField[]);
       this.formConfigService.setFields(this.fields());
       this.buildForm();
@@ -132,6 +141,7 @@ export class PreviewStep implements OnInit, OnDestroy {
       this.loadDynamicOptions();
       this.applyRules();
       this.updateLiveValuesFromForm();
+      this.applyInitialValues();
       this.valueChangesSub?.unsubscribe();
       this.valueChangesSub = this.previewForm.valueChanges.subscribe(() => {
         this.applyRules();
@@ -155,6 +165,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     this.submittedValues.set(null);
     this.optionLookup.set({});
     this.valueChangesSub?.unsubscribe();
+    this.lastPatchedInitialKey = null;
   }
 
   private buildForm() {
@@ -737,6 +748,16 @@ export class PreviewStep implements OnInit, OnDestroy {
       payload[field.name] = this.buildFieldValue(field, rawValue);
     });
     return payload;
+  }
+
+  private applyInitialValues() {
+    const values = this.initialValues();
+    if (!values || !this.fields().length) return;
+    const key = JSON.stringify(values);
+    if (this.lastPatchedInitialKey === key) return;
+    this.previewForm.patchValue(values);
+    this.lastPatchedInitialKey = key;
+    this.updateLiveValuesFromForm();
   }
 
   private updateLiveValuesFromForm() {

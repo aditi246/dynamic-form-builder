@@ -23,9 +23,11 @@ export class FormsManagementService {
   private readonly FORMS_LIST_KEY = 'formlist';
   private readonly LEGACY_FORMS_LIST_KEY = 'form-builder-forms-list';
   private readonly CURRENT_FORM_KEY = 'form-builder-current-form-id';
+  private readonly SUBMISSION_PREFIX = 'form-builder-submissions-';
 
   forms = signal<SavedForm[]>([]);
   currentFormId = signal<string | null>(null);
+  activeUserContext = signal<SavedForm['userContext'] | null>(null);
 
   constructor(private storageService: StorageService) {
     this.loadForms();
@@ -119,6 +121,10 @@ export class FormsManagementService {
   }
 
   getFormContext(formId?: string | null): SavedForm['userContext'] | null {
+    const override = this.activeUserContext();
+    if (override) {
+      return override;
+    }
     const targetId = formId || this.currentFormId();
     const form = targetId ? this.getFormById(targetId) : null;
     return Array.isArray(form?.userContext) ? form?.userContext : [];
@@ -231,6 +237,87 @@ export class FormsManagementService {
     this.saveForms();
 
     return newFormId;
+  }
+
+  setActiveUserContext(context: SavedForm['userContext'] | null) {
+    this.activeUserContext.set(
+      Array.isArray(context)
+        ? context.map((entry) => ({
+            key: String(entry.key),
+            displayName: String(entry.displayName),
+            value: String(entry.value),
+          }))
+        : null,
+    );
+  }
+
+  clearActiveUserContext() {
+    this.activeUserContext.set(null);
+  }
+
+  saveUserSubmission(formId: string, submission: Record<string, any>) {
+    if (!formId) return;
+    const key = `${this.SUBMISSION_PREFIX}${formId}`;
+    const existing =
+      this.storageService.getItem<
+        {
+          id: string;
+          submittedAt: string;
+          values: Record<string, any>;
+          context: SavedForm['userContext'] | null;
+        }[]
+      >(key) || [];
+    const entry = {
+      id: this.generateId(),
+      submittedAt: new Date().toISOString(),
+      values: submission,
+      context: this.getFormContext(formId),
+    };
+    this.storageService.setItem(key, [...existing, entry]);
+  }
+
+  getUserSubmissions(formId: string) {
+    if (!formId) return [];
+    const key = `${this.SUBMISSION_PREFIX}${formId}`;
+    return (
+      this.storageService.getItem<
+        {
+          id: string;
+          submittedAt: string;
+          values: Record<string, any>;
+          context: SavedForm['userContext'] | null;
+        }[]
+      >(key) || []
+    );
+  }
+
+  updateUserSubmission(
+    formId: string,
+    submissionId: string,
+    submission: Record<string, any>,
+  ) {
+    if (!formId || !submissionId) return;
+    const key = `${this.SUBMISSION_PREFIX}${formId}`;
+    const existing =
+      this.storageService.getItem<
+        {
+          id: string;
+          submittedAt: string;
+          values: Record<string, any>;
+          context: SavedForm['userContext'] | null;
+        }[]
+      >(key) || [];
+    const updated = existing.map((entry) =>
+      entry.id === submissionId
+        ? {
+            ...entry,
+            submittedAt: new Date().toISOString(),
+            values: submission,
+            context: this.getFormContext(formId),
+          }
+        : entry,
+    );
+    this.storageService.setItem(key, updated);
   }
 
   private loadCurrentFormId(): void {

@@ -61,4 +61,3 @@ Example format: {"firstName": "John", "lastName": "Doe", "age": 30, "isActive": 
 
 Return only the JSON object, no additional text.`,
 };
-

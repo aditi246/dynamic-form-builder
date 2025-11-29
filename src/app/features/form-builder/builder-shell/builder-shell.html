@@ -1,9 +1,19 @@
 <div class="min-h-screen bg-bg flex flex-col">
   <header class="bg-primary text-white sticky top-0 z-20">
     <div class="px-6 py-4">
-      <h1 class="text-xl font-semibold">Dynamic Form Generator</h1>
+      <div class="flex items-center justify-between gap-4">
+        <h1 class="text-xl font-semibold">Dynamic Form Generator</h1>
+        @if (userFillMode()) {
+        <span
+          class="text-xs bg-white/10 text-white px-3 py-1 rounded-full border border-white/20"
+        >
+          User fill mode · {{ formsService.getCurrentFormName() }}
+        </span>
+        }
+      </div>
     </div>
     <!-- Tabs Navigation -->
+    @if (!userFillMode()) {
     <nav class="bg-card border-t border-border">
       <div class="px-6 flex gap-8">
         <button
@@ -57,6 +67,7 @@
         </button>
       </div>
     </nav>
+    }
   </header>
 
   <main class="p-6 pb-28 flex-1 overflow-auto">
@@ -65,6 +76,8 @@
       (nextStep)="onNextStep()"
       (backStep)="onBackStep()"
       (formSelected)="onFormSelected($event)"
+      (startUserFill)="onUserFillStart($event)"
+      (editSubmission)="onSubmissionEdit($event)"
     ></app-forms-step>
     } @else if (currentStep() === 'fields') {
     <app-fields-step
@@ -80,6 +93,7 @@
     } @else if (currentStep() === 'preview') {
     <app-preview-step
       #previewCmp
+      [initialValues]="initialValues()"
       (nextStep)="onPreviewSubmit($event)"
       (backStep)="onBackStep()"
     ></app-preview-step>
@@ -97,6 +111,9 @@
     >
       Back
     </button>
+    @if (submissionSaved()) {
+    <span class="text-sm text-muted">Submission saved to your browser.</span>
+    }
     <button
       type="button"
       (click)="handleNextClick()"

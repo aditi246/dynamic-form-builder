@@ -1,4 +1,4 @@
-import { Component, output, signal, OnInit } from '@angular/core';
+import { Component, output, signal, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormControl,
@@ -12,7 +12,13 @@ import {
 } from '../../../shared/services/forms-management.service';
 import { IconComponent } from '../../../components/icon/icon';
 import { StorageService } from '../../../shared/services/storage.service';
-import { MOCK_FORM_ID, MOCK_FORMLIST, MOCK_RULES } from './mock-form.data';
+import {
+  MOCK_FORM_ID,
+  MOCK_FORMLIST,
+  MOCK_RULES,
+  MOCK_SUBMISSIONS,
+} from './mock-form.data';
+import { BuilderTourService } from '../tutorial/builder-tour.service';
 
 @Component({
   selector: 'app-forms-step',
@@ -59,11 +65,33 @@ export class FormsStep implements OnInit {
   });
 
   fillContextForm = new FormGroup({});
+  private hasAutoLoadedMock = false;
 
   constructor(
     public formsService: FormsManagementService,
     private storageService: StorageService,
-  ) {}
+    private tour: BuilderTourService,
+  ) {
+    effect(() => {
+      const step = this.tour.currentStep();
+      if (!this.tour.isActive() || !step) return;
+      if (step.id === 'forms-submissions') {
+        const current = this.submissionsFormId();
+        if (current) return;
+        this.ensureMockDataForTour(() => {
+          const forms = this.formsService.forms();
+          if (forms.length === 0) return;
+          // Prefer a form named "Form 1", otherwise first available
+          const targetForm =
+            forms.find((f) => f.name.toLowerCase().includes('form 1')) ||
+            forms[0];
+          if (targetForm) {
+            this.showSubmissionsForForm(targetForm);
+          }
+        });
+      }
+    });
+  }
 
   ngOnInit() {
     this.formsService.loadForms();
@@ -129,10 +157,7 @@ export class FormsStep implements OnInit {
 
   viewSubmissions(event: Event, form: SavedForm) {
     event.stopPropagation();
-    this.submissionsFormId.set(form.id);
-    const data = this.formsService.getUserSubmissions(form.id);
-    this.submissions.set(data);
-    this.selectedSubmission.set(data.length ? data[0] : null);
+    this.showSubmissionsForForm(form);
   }
 
   selectSubmission(entry: {
@@ -156,6 +181,13 @@ export class FormsStep implements OnInit {
       values: entry.values,
       context: entry.context || null,
     });
+  }
+
+  private showSubmissionsForForm(form: SavedForm) {
+    this.submissionsFormId.set(form.id);
+    const data = this.formsService.getUserSubmissions(form.id);
+    this.submissions.set(data);
+    this.selectedSubmission.set(data.length ? data[0] : null);
   }
 
   deleteForm(event: Event, formId: string) {
@@ -195,14 +227,16 @@ export class FormsStep implements OnInit {
     });
   }
 
-  loadMockForm() {
+  loadMockForm(silent = false) {
     const existing = this.formsService.forms();
     const mockName = MOCK_FORMLIST[0].name.trim().toLowerCase();
     const nameExists = existing.some(
       (f) => f.name.trim().toLowerCase() === mockName,
     );
     if (nameExists) {
-      alert('Mock form already exists. No changes made.');
+      if (!silent) {
+        alert('Mock form already exists. No changes made.');
+      }
       return;
     }
 
@@ -216,6 +250,27 @@ export class FormsStep implements OnInit {
       `form-builder-rules-${MOCK_FORM_ID}`,
       MOCK_RULES,
     );
+    this.storageService.setItem(
+      `form-builder-submissions-${MOCK_FORM_ID}`,
+      MOCK_SUBMISSIONS,
+    );
     this.formsService.loadForms();
+  }
+
+  ensureMockDataForTour(onReady?: () => void) {
+    const hasForms = (this.formsService.forms() || []).length > 0;
+    if (hasForms) {
+      onReady?.();
+      return;
+    }
+
+    if (!this.hasAutoLoadedMock) {
+      this.loadMockForm(true);
+      this.hasAutoLoadedMock = true;
+    }
+
+    setTimeout(() => {
+      onReady?.();
+    }, 0);
   }
 }

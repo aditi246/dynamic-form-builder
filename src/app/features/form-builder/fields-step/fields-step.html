@@ -105,7 +105,10 @@
     </div>
 
     <!-- Field Editor - 40% -->
-    <div class="w-[40%] bg-card rounded-md shadow-sm p-6 flex flex-col">
+    <div
+      class="w-[40%] bg-card rounded-md shadow-sm p-6 flex flex-col"
+      data-tour-anchor="field-editor"
+    >
       <h2 class="text-lg font-semibold text-text mb-6">Field Editor</h2>
 
       <form
@@ -199,7 +202,7 @@
             </div>
 
             @if (fieldForm.value.selectSource === 'manual') {
-            <div>
+            <div data-tour-anchor="field-options-manual">
               <label class="block text-sm font-medium text-text mb-2"
                 >Options (for Select type)</label
               >
@@ -211,7 +214,7 @@
               ></textarea>
             </div>
             } @else {
-            <div class="space-y-3">
+            <div class="space-y-3" data-tour-anchor="field-options-api">
               <div
                 class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4"
               >
@@ -237,7 +240,7 @@
               </div>
 
               @if (fieldForm.value.apiMode === 'reuse') {
-              <div class="space-y-1">
+              <div class="space-y-1" data-tour-anchor="field-options-api-reuse">
                 <label class="block text-sm font-medium text-text"
                   >Pick existing API</label
                 >

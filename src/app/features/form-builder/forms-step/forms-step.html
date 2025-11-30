@@ -4,7 +4,7 @@
       <h2 class="text-2xl font-semibold text-text mb-2">Forms</h2>
       <p class="text-muted">Create and manage your forms.</p>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3" data-tour-anchor="forms-actions">
       <button
         type="button"
         (click)="loadMockForm()"
@@ -25,7 +25,7 @@
   </div>
 
   <div class="flex gap-6 flex-1 min-h-0">
-    <div class="w-[60%] space-y-4">
+    <div class="w-[60%] space-y-4" data-tour-anchor="forms-list">
       <!-- Forms List -->
       @if (formsService.forms().length === 0) {
       <div class="bg-card rounded-md shadow-sm p-6 border border-border">
@@ -90,6 +90,7 @@
                     (click)="viewSubmissions($event, form)"
                     class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
                     title="View submissions"
+                    data-tour-anchor="forms-action-view"
                   >
                     <app-icon name="list" class="w-4 h-4"></app-icon>
                   </button>
@@ -98,6 +99,7 @@
                     (click)="copyForm($event, form.id)"
                     class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
                     title="Copy form"
+                    data-tour-anchor="forms-action-copy"
                   >
                     <app-icon name="copy" class="w-4 h-4"></app-icon>
                   </button>
@@ -106,6 +108,7 @@
                     (click)="openFillModal(form, $event)"
                     class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
                     title="Fill form as user"
+                    data-tour-anchor="forms-action-fill"
                   >
                     <app-icon name="home" class="w-4 h-4"></app-icon>
                   </button>
@@ -114,6 +117,7 @@
                     (click)="editForm($event, form.id)"
                     class="p-1 text-muted hover:text-primary transition-colors cursor-pointer"
                     title="Edit form"
+                    data-tour-anchor="forms-action-edit"
                   >
                     <app-icon name="edit" class="w-4 h-4"></app-icon>
                   </button>
@@ -122,6 +126,7 @@
                     (click)="deleteForm($event, form.id)"
                     class="p-1 text-muted hover:text-danger transition-colors cursor-pointer"
                     title="Delete form"
+                    data-tour-anchor="forms-action-delete"
                   >
                     <app-icon name="delete" class="w-4 h-4"></app-icon>
                   </button>
@@ -135,7 +140,7 @@
       }
     </div>
 
-    <div class="w-[40%]">
+    <div class="w-[40%]" data-tour-anchor="forms-submissions">
       <div
         class="bg-card border border-border rounded-md shadow-sm p-5 h-full flex flex-col gap-3"
       >
@@ -284,6 +289,7 @@
     <div
       class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border"
       (click)="$event.stopPropagation()"
+      data-tour-anchor="forms-fill-context"
     >
       <h3 class="text-xl font-semibold text-text mb-2">Fill form as a user</h3>
       <p class="text-xs text-muted mb-4">

@@ -26,6 +26,7 @@ import { FormsManagementService } from '../../../shared/services/forms-managemen
 import { FormField } from '../fields-step/fields-step';
 import { IconComponent } from '../../../components/icon/icon';
 import { ApiCacheService } from '../../../shared/services/api-cache.service';
+import { BuilderTourService } from '../tutorial/builder-tour.service';
 
 @Component({
   selector: 'app-rules-step',
@@ -132,11 +133,19 @@ export class RulesStep implements OnInit {
     { label: 'Does not contain', value: 'not-contains' },
   ];
 
+  private tourOriginalActionType:
+    | 'validation'
+    | 'visibility'
+    | 'options'
+    | null = null;
+  private tourOriginalTargetField: string | null = null;
+
   constructor(
     private formConfigService: FormConfigService,
     private formsService: FormsManagementService,
     private http: HttpClient,
     private apiCacheService: ApiCacheService,
+    private tour: BuilderTourService,
   ) {
     effect(() => {
       this.formsService.forms(); // react when fields list updates
@@ -213,6 +222,62 @@ export class RulesStep implements OnInit {
       this.updateOptionControlsAvailability();
     });
 
+    effect(() => {
+      const step = this.tour.currentStep();
+      if (!this.tour.isActive() || !step) {
+        this.restoreTourActionState();
+        return;
+      }
+
+      const isActionStep =
+        step.id === 'rules-validation' ||
+        step.id === 'rules-visibility' ||
+        step.id === 'rules-hide-options';
+
+      if (!isActionStep) {
+        this.restoreTourActionState();
+        return;
+      }
+
+      if (!this.tourOriginalActionType) {
+        this.tourOriginalActionType =
+          (this.ruleForm.value.actionType as
+            | 'validation'
+            | 'visibility'
+            | 'options') || 'validation';
+      }
+      if (!this.tourOriginalTargetField) {
+        this.tourOriginalTargetField = this.ruleForm.value.targetField || '';
+      }
+
+      if (step.id === 'rules-hide-options') {
+        const currentTarget = this.ruleForm.value.targetField || '';
+        if (!currentTarget || !this.isSelectField(currentTarget)) {
+          const firstSelect = this.fields().find((f) => f.type === 'select');
+          if (firstSelect) {
+            this.ruleForm.patchValue(
+              { targetField: firstSelect.name },
+              { emitEvent: true },
+            );
+          }
+        }
+        this.ruleForm.patchValue(
+          { actionType: 'options' },
+          { emitEvent: true },
+        );
+      } else if (step.id === 'rules-visibility') {
+        this.ruleForm.patchValue(
+          { actionType: 'visibility' },
+          { emitEvent: true },
+        );
+      } else {
+        this.ruleForm.patchValue(
+          { actionType: 'validation' },
+          { emitEvent: true },
+        );
+      }
+    });
+
     this.syncThresholdValidators();
     this.updateOptionControlsAvailability();
   }
@@ -230,6 +295,27 @@ export class RulesStep implements OnInit {
     this.userContextEntriesSignal.set(ctx);
     this.fields.set((fieldsData as FormField[]) || []);
     this.loadSelectOptions();
+  }
+
+  isSelectField(name: string): boolean {
+    return !!this.fields().find((f) => f.name === name && f.type === 'select');
+  }
+
+  private restoreTourActionState() {
+    if (this.tourOriginalActionType) {
+      this.ruleForm.patchValue(
+        { actionType: this.tourOriginalActionType },
+        { emitEvent: true },
+      );
+    }
+    if (this.tourOriginalTargetField) {
+      this.ruleForm.patchValue(
+        { targetField: this.tourOriginalTargetField },
+        { emitEvent: true },
+      );
+    }
+    this.tourOriginalActionType = null;
+    this.tourOriginalTargetField = null;
   }
 
   openContextModal() {
@@ -728,11 +814,6 @@ export class RulesStep implements OnInit {
     if (value === null || value === undefined || value === '') return undefined;
     const num = Number(value);
     return Number.isNaN(num) ? undefined : num;
-  }
-
-  isSelectField(fieldName: string): boolean {
-    const field = this.fields().find((f) => f.name === fieldName);
-    return field?.type === 'select';
   }
 
   getSelectOptions(fieldName: string): string[] {

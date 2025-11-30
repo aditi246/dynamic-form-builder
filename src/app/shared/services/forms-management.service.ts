@@ -95,6 +95,7 @@ export class FormsManagementService {
     this.saveForms();
 
     this.storageService.removeItem(`form-builder-rules-${formId}`);
+    this.storageService.removeItem(`${this.SUBMISSION_PREFIX}${formId}`);
 
     if (this.currentFormId() === formId) {
       this.setCurrentForm(null);

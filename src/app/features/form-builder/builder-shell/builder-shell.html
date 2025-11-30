@@ -2,14 +2,25 @@
   <header class="bg-primary text-white sticky top-0 z-20">
     <div class="px-6 py-4">
       <div class="flex items-center justify-between gap-4">
-        <h1 class="text-xl font-semibold">Dynamic Form Generator</h1>
-        @if (userFillMode()) {
-        <span
-          class="text-xs bg-white/10 text-white px-3 py-1 rounded-full border border-white/20"
-        >
-          User fill mode · {{ formsService.getCurrentFormName() }}
-        </span>
-        }
+        <div class="flex items-center gap-3">
+          <h1 class="text-xl font-semibold">Dynamic Form Generator</h1>
+          @if (userFillMode()) {
+          <span
+            class="text-xs bg-white/10 text-white px-3 py-1 rounded-full border border-white/20"
+          >
+            User fill mode · {{ formsService.getCurrentFormName() }}
+          </span>
+          }
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            (click)="startTour(true)"
+            class="px-3 py-2 bg-white text-primary rounded-md font-medium text-sm hover:bg-white/90"
+          >
+            Start tutorial
+          </button>
+        </div>
       </div>
     </div>
     <!-- Tabs Navigation -->
@@ -73,6 +84,7 @@
   <main class="p-6 pb-28 flex-1 overflow-auto">
     @if (currentStep() === 'forms') {
     <app-forms-step
+      #formsCmp
       (nextStep)="onNextStep()"
       (backStep)="onBackStep()"
       (formSelected)="onFormSelected($event)"
@@ -125,4 +137,5 @@
       {{ currentStep() === 'preview' ? 'Submit' : 'Next' }}
     </button>
   </footer>
+  <app-builder-tour-overlay></app-builder-tour-overlay>
 </div>

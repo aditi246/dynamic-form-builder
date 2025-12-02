@@ -1,0 +1,33 @@
+@if (show()) {
+  <div
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    (click)="onBackdropClick()"
+  >
+    <div
+      class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border"
+      (click)="$event.stopPropagation()"
+    >
+      <p class="text-base font-semibold text-text mb-2">
+        {{ title() }}
+      </p>
+      <p class="text-sm text-muted">{{ message() }}</p>
+      <div class="flex gap-3 justify-end mt-4">
+        <button
+          type="button"
+          class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 text-sm"
+          (click)="onReupload()"
+        >
+          Reupload
+        </button>
+        <button
+          type="button"
+          class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg text-sm"
+          (click)="onKeep()"
+        >
+          Keep it
+        </button>
+      </div>
+    </div>
+  </div>
+}
+

@@ -125,9 +125,13 @@
             [accept]="getAcceptForField(field)"
             [blurryIndex]="blurryWarnings()[field.name] ?? null"
             [analyzingIndex]="analyzingImages()[field.name] ?? null"
+            [documentQualityIndex]="documentQualityWarnings()[field.name] ?? null"
+            [analyzingDocumentIndex]="analyzingDocuments()[field.name] ?? null"
+            [documentQualityMessage]="field.fileType === 'docs' ? getDocumentQualityMessage(field.name, documentQualityWarnings()[field.name] ?? null) : ''"
             (filesAdded)="onFilesAdded(field, $event)"
             (removeFile)="onRemoveFile(field.name, $event)"
             (blurryAction)="onBlurryAction(field.name, $event)"
+            (documentQualityAction)="onDocumentQualityAction(field.name, $event)"
           ></app-file-input>
           @if (isFieldInvalid(field.name)) {
           <p class="text-sm text-danger mt-1">

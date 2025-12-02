@@ -1,41 +1,77 @@
-import { Component, Input, signal, output } from '@angular/core';
+import { Component, input, signal, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../icon/icon';
+import { AlertPopupComponent } from '../alert-popup/alert-popup';
+import { DocumentAnalysisResult } from '../../shared/services/open-ai.service';
 
 export interface DisplayFile {
   file: File;
   previewUrl?: string;
   isBlurry?: boolean;
+  documentQuality?: DocumentAnalysisResult;
 }
 
 @Component({
   selector: 'app-file-input',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [CommonModule, IconComponent, AlertPopupComponent],
   templateUrl: './input-file.html',
 })
 export class FileInputComponent {
-  private _files: DisplayFile[] = [];
   dragActive = signal<boolean>(false);
 
-  @Input() multiple = true;
-  @Input() accept = 'image/*';
-  @Input() blurryIndex: number | null = null;
-  @Input() analyzingIndex: number | null = null;
-  @Input() blurryMessage = 'Blurry image detected. Please reupload the image.';
+  multiple = input<boolean>(true);
+  accept = input<string>('image/*');
+  blurryIndex = input<number | null>(null);
+  analyzingIndex = input<number | null>(null);
+  blurryMessage = input<string>('Blurry image detected. Please reupload the image.');
+  documentQualityIndex = input<number | null>(null);
+  analyzingDocumentIndex = input<number | null>(null);
+  documentQualityMessage = input<string>('');
+  files = input<DisplayFile[] | null | undefined>([]);
 
-  @Input()
-  set files(value: DisplayFile[] | null | undefined) {
-    this._files = value || [];
-  }
+  filesList = computed(() => this.files() || []);
 
-  get filesList(): DisplayFile[] {
-    return this._files;
+  supportedFileTypeLabel = computed(() => {
+    const acceptValue = this.accept();
+    if (acceptValue === 'image/*') return 'Images';
+    if (acceptValue === '*/*') return 'All files';
+    // Check if accept contains document extensions
+    if (acceptValue.includes('.pdf') || acceptValue.includes('.doc') || 
+        acceptValue.includes('.xls') || acceptValue.includes('.ppt')) {
+      return 'Documents';
+    }
+    return 'All files';
+  });
+
+  /**
+   * Checks if a file is a PDF or document
+   */
+  isDocumentFile(file: File): boolean {
+    const fileName = file.name.toLowerCase();
+    const fileType = file.type.toLowerCase();
+    
+    return (
+      fileType === 'application/pdf' ||
+      fileName.endsWith('.pdf') ||
+      fileName.endsWith('.doc') ||
+      fileName.endsWith('.docx') ||
+      fileName.endsWith('.xls') ||
+      fileName.endsWith('.xlsx') ||
+      fileName.endsWith('.ppt') ||
+      fileName.endsWith('.pptx') ||
+      fileName.endsWith('.txt') ||
+      fileName.endsWith('.rtf') ||
+      fileName.endsWith('.odt') ||
+      fileName.endsWith('.ods') ||
+      fileName.endsWith('.odp')
+    );
   }
 
   filesAdded = output<File[]>();
   removeFile = output<number>();
   blurryAction = output<{ action: 'reupload' | 'keep'; index: number }>();
+  documentQualityAction = output<{ action: 'reupload' | 'keep'; index: number }>();
 
   onFileChange(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -65,14 +101,21 @@ export class FileInputComponent {
     this.removeFile.emit(index);
   }
 
-  resolveBlurry(action: 'reupload' | 'keep') {
-    if (this.blurryIndex === null || this.blurryIndex === undefined) return;
-    this.blurryAction.emit({ action, index: this.blurryIndex });
+  onBlurryPopupAction(action: 'reupload' | 'keep') {
+    const index = this.blurryIndex();
+    if (index === null || index === undefined) return;
+    this.blurryAction.emit({ action, index });
+  }
+
+  onDocumentQualityPopupAction(action: 'reupload' | 'keep') {
+    const index = this.documentQualityIndex();
+    if (index === null || index === undefined) return;
+    this.documentQualityAction.emit({ action, index });
   }
 
   private emitFiles(fileList: FileList) {
     let files = Array.from(fileList);
-    if (!this.multiple) {
+    if (!this.multiple()) {
       files = files.slice(0, 1);
     }
     if (files.length) {

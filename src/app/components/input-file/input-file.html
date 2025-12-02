@@ -12,8 +12,8 @@
       #fileInput
       type="file"
       class="hidden"
-      [attr.multiple]="multiple ? '' : null"
-      [accept]="accept"
+      [attr.multiple]="multiple() ? '' : null"
+      [accept]="accept()"
       (change)="onFileChange($event)"
     />
     <div class="flex flex-col items-center justify-center py-6 text-center">
@@ -22,14 +22,14 @@
         Click to upload or drag & drop
       </p>
       <p class="text-xs text-muted">
-        Supported: {{ accept === 'image/*' ? 'Images' : 'All files' }}
+        Supported: {{ supportedFileTypeLabel() }}
       </p>
     </div>
   </div>
 
-  @if (filesList.length) {
+  @if (filesList().length) {
   <div class="space-y-2">
-    @for (file of filesList; track file.file.name; let i = $index) {
+    @for (file of filesList(); track file.file.name; let i = $index) {
     <div
       class="flex items-center gap-3 border border-border rounded-md p-2 bg-card"
     >
@@ -42,9 +42,11 @@
           alt="preview"
           class="w-full h-full object-cover"
         />
+        } @else if (file.file && isDocumentFile(file.file)) {
+        <app-icon name="copy" class="w-8 h-8 text-primary"></app-icon>
         } @else {
         <app-icon name="copy" class="w-6 h-6 text-muted"></app-icon>
-        } @if (analyzingIndex === i) {
+        } @if (analyzingIndex() === i || analyzingDocumentIndex() === i) {
         <div
           class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center"
         >
@@ -62,13 +64,27 @@
         <p class="text-xs text-muted">
           {{ (file.file.size / 1024) | number: '1.0-0' }} KB
         </p>
-        @if (analyzingIndex === i) {
+        @if (analyzingIndex() === i) {
         <p class="text-xs text-primary mt-1 flex items-center gap-1">
           <app-icon name="spinner" class="w-3 h-3 animate-spin"></app-icon>
           Analyzing image...
         </p>
+        } @else if (analyzingDocumentIndex() === i) {
+        <p class="text-xs text-primary mt-1 flex items-center gap-1">
+          <app-icon name="spinner" class="w-3 h-3 animate-spin"></app-icon>
+          Analyzing document...
+        </p>
         } @else if (file.isBlurry) {
         <p class="text-xs text-amber-600 mt-1">Flagged as blurry</p>
+        } @else if (file.documentQuality) {
+        @if (file.documentQuality.isLikelyTampered) {
+        <p class="text-xs text-amber-600 mt-1">Document appears tampered</p>
+        }
+        @if (file.documentQuality.unreadableRegions && file.documentQuality.unreadableRegions.length > 0) {
+        <p class="text-xs text-amber-600 mt-1">
+          {{ file.documentQuality.unreadableRegions.length }} redacted region(s)
+        </p>
+        }
         }
       </div>
       <button
@@ -81,36 +97,17 @@
     </div>
     }
   </div>
-  } @if (blurryIndex !== null && blurryIndex !== undefined) {
-  <div
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    (click)="resolveBlurry('keep')"
-  >
-    <div
-      class="bg-card rounded-md shadow-lg p-6 max-w-md w-full mx-4 border border-border"
-      (click)="$event.stopPropagation()"
-    >
-      <p class="text-base font-semibold text-text mb-2">
-        Blurry image detected
-      </p>
-      <p class="text-sm text-muted">{{ blurryMessage }}</p>
-      <div class="flex gap-3 justify-end mt-4">
-        <button
-          type="button"
-          class="px-4 py-2 bg-primary text-white rounded-md hover:opacity-90 text-sm"
-          (click)="resolveBlurry('reupload')"
-        >
-          Reupload
-        </button>
-        <button
-          type="button"
-          class="px-4 py-2 border border-border text-text rounded-md hover:bg-bg text-sm"
-          (click)="resolveBlurry('keep')"
-        >
-          Keep it
-        </button>
-      </div>
-    </div>
-  </div>
   }
+  <app-alert-popup
+    [title]="'Blurry image detected'"
+    [message]="blurryMessage()"
+    [show]="blurryIndex() !== null && blurryIndex() !== undefined"
+    (action)="onBlurryPopupAction($event)"
+  ></app-alert-popup>
+  <app-alert-popup
+    [title]="'Document quality issues detected'"
+    [message]="documentQualityMessage() || 'Document may be tampered, poorly scanned, or have blocked text regions.'"
+    [show]="documentQualityIndex() !== null && documentQualityIndex() !== undefined"
+    (action)="onDocumentQualityPopupAction($event)"
+  ></app-alert-popup>
 </div>

@@ -60,4 +60,23 @@ For checkboxes, use true/false. For numbers, use numeric values. For text/select
 Example format: {"firstName": "John", "lastName": "Doe", "age": 30, "isActive": true}
 
 Return only the JSON object, no additional text.`,
+
+  DOCUMENT_QUALITY_CHECK: `You are a document quality analyzer. Analyze the provided image/document for quality issues.
+
+Check for:
+1) Tampering or redaction: Does the document look edited, cropped, or suspiciously altered? Black boxes, blurred patches, strike-throughs, or masked/redacted text should be treated as tampering.
+2) Unreadable regions: Are there areas where text is blocked, too dark, blurred, obscured, or otherwise unreadable? Describe each region briefly.
+3) Key information: Does the document contain at least one date or ID-like string (e.g., dates, ID numbers, reference numbers)?
+
+Return ONLY valid JSON with:
+{
+  "isLikelyTampered": boolean,
+  "unreadableRegions": [{"description": "string"}],
+  "hasKeyInfo": boolean
+}
+
+Rules:
+- If you see redaction/black boxes/blocked text, set "isLikelyTampered" to true and include an unreadableRegions entry describing it.
+- If no unreadable regions, return an empty array for unreadableRegions.
+- Do not include any extra text outside the JSON.`,
 };

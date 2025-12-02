@@ -31,13 +31,14 @@ import { AudioTextareaComponent } from '../../../components/audio-textarea/audio
 import { FileInputComponent } from '../../../components/input-file/input-file';
 import { FormConfigService } from '../../../shared/services/form-config.service';
 import { RulesEngineService } from '../../../shared/services/rules-engine.service';
-import { OpenAiService } from '../../../shared/services/open-ai.service';
+import { OpenAiService, DocumentAnalysisResult } from '../../../shared/services/open-ai.service';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 interface FilePreviewEntry {
   file: File;
   previewUrl?: string;
   isBlurry?: boolean;
+  documentQuality?: DocumentAnalysisResult;
 }
 
 type SelectOption = { label: string; value: any; raw?: any };
@@ -73,6 +74,8 @@ export class PreviewStep implements OnInit, OnDestroy {
   filePreviews = signal<Record<string, FilePreviewEntry[]>>({});
   blurryWarnings = signal<Record<string, number | null>>({});
   analyzingImages = signal<Record<string, number | null>>({});
+  documentQualityWarnings = signal<Record<string, number | null>>({});
+  analyzingDocuments = signal<Record<string, number | null>>({});
   submittedValues = signal<Record<string, any> | null>(null);
   optionLookup = signal<Record<string, Record<string, SelectOption>>>({});
   payloadMode = signal<'value' | 'pair' | 'full'>('value');
@@ -132,6 +135,8 @@ export class PreviewStep implements OnInit, OnDestroy {
       this.filePreviews.set({});
       this.blurryWarnings.set({});
       this.analyzingImages.set({});
+      this.documentQualityWarnings.set({});
+      this.analyzingDocuments.set({});
       this.optionLookup.set({});
       this.lastPatchedInitialKey = null;
       this.fields.set(fieldsData as FormField[]);
@@ -162,6 +167,8 @@ export class PreviewStep implements OnInit, OnDestroy {
     this.filePreviews.set({});
     this.blurryWarnings.set({});
     this.analyzingImages.set({});
+    this.documentQualityWarnings.set({});
+    this.analyzingDocuments.set({});
     this.submittedValues.set(null);
     this.optionLookup.set({});
     this.valueChangesSub?.unsubscribe();
@@ -589,7 +596,13 @@ export class PreviewStep implements OnInit, OnDestroy {
 
     previews.forEach((preview, idx) => {
       const absoluteIndex = current.length + idx;
-      this.runBlurCheck(field.name, absoluteIndex, preview.file);
+      // Check if this is a document field or image field
+      if (field.fileType === 'docs') {
+        this.runDocumentQualityCheck(field.name, absoluteIndex, preview.file);
+      } else if (field.fileType === 'images' || !field.fileType) {
+        // Default to image blur check for images or when fileType is not set
+        this.runBlurCheck(field.name, absoluteIndex, preview.file);
+      }
     });
   }
 
@@ -599,6 +612,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     const updated = current.filter((_, i) => i !== index);
     this.updateFieldFiles(fieldName, updated);
     this.setBlurryWarning(fieldName, null);
+    this.setDocumentQualityWarning(fieldName, null);
   }
 
   onBlurryAction(
@@ -614,6 +628,7 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   getAcceptForField(field: FormField): string {
     if (field.fileType === 'all') return '*/*';
+    if (field.fileType === 'docs') return '.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp';
     return 'image/*';
   }
 
@@ -728,6 +743,99 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   private setBlurryWarning(fieldName: string, index: number | null) {
     this.blurryWarnings.update((map) => ({ ...map, [fieldName]: index }));
+  }
+
+  private setDocumentQualityWarning(fieldName: string, index: number | null) {
+    this.documentQualityWarnings.update((map) => ({ ...map, [fieldName]: index }));
+  }
+
+  private setAnalyzingDocument(fieldName: string, index: number | null) {
+    this.analyzingDocuments.update((map) => ({ ...map, [fieldName]: index }));
+  }
+
+  /**
+   * Runs document quality check for PDF or document files
+   */
+  private runDocumentQualityCheck(fieldName: string, index: number, file: File) {
+    this.setAnalyzingDocument(fieldName, index);
+    
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const analysis$ = isPdf
+      ? this.openAiService.analyzePdf(file)
+      : this.openAiService.analyzeImage(file);
+
+    analysis$.subscribe({
+      next: (result: DocumentAnalysisResult) => {
+        this.setAnalyzingDocument(fieldName, null);
+        this.handleDocumentQualityResult(fieldName, index, result);
+      },
+      error: (err) => {
+        this.setAnalyzingDocument(fieldName, null);
+        console.error('Document quality check failed', err);
+      },
+    });
+  }
+
+  /**
+   * Handles document quality analysis results
+   */
+  private handleDocumentQualityResult(
+    fieldName: string,
+    index: number,
+    result: DocumentAnalysisResult,
+  ) {
+    this.filePreviews.update((map) => {
+      const current = map[fieldName] || [];
+      if (!current[index]) return map;
+      const updated = [...current];
+      updated[index] = { ...updated[index], documentQuality: result };
+      return { ...map, [fieldName]: updated };
+    });
+
+    // Show warning if document has quality issues
+    const hasIssues =
+      result.isLikelyTampered || (result.unreadableRegions?.length ?? 0) > 0;
+    if (hasIssues) {
+      this.setDocumentQualityWarning(fieldName, index);
+    }
+  }
+
+  /**
+   * Gets document quality warning message for a field
+   */
+  getDocumentQualityMessage(fieldName: string, index: number | null): string {
+    if (index === null || index === undefined) return '';
+    
+    const files = this.filePreviews()[fieldName] || [];
+    const file = files[index];
+    if (!file?.documentQuality) return '';
+
+    const issues: string[] = [];
+    if (file.documentQuality.isLikelyTampered) {
+      issues.push('Document appears tampered or edited');
+    }
+    if (file.documentQuality.unreadableRegions?.length > 0) {
+      issues.push(
+        `${file.documentQuality.unreadableRegions.length} redacted region(s) detected`,
+      );
+    }
+    if (issues.length === 0) return '';
+
+    return issues.join('. ') + '.';
+  }
+
+  /**
+   * Handles document quality action (reupload or keep)
+   */
+  onDocumentQualityAction(
+    fieldName: string,
+    event: { action: 'reupload' | 'keep'; index: number },
+  ) {
+    if (event.action === 'reupload') {
+      this.onRemoveFile(fieldName, event.index);
+    } else {
+      this.setDocumentQualityWarning(fieldName, null);
+    }
   }
 
   private setAnalyzingImage(fieldName: string, index: number | null) {
@@ -845,6 +953,8 @@ export class PreviewStep implements OnInit, OnDestroy {
     this.filePreviews.set({});
     this.blurryWarnings.set({});
     this.analyzingImages.set({});
+    this.documentQualityWarnings.set({});
+    this.analyzingDocuments.set({});
     // Rebuild form with default values
     this.buildForm();
     this.applyRules();

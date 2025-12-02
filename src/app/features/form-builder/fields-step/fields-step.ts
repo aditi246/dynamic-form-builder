@@ -26,7 +26,7 @@ export interface FormField {
   name: string;
   type: string;
   required: boolean;
-  fileType?: 'images' | 'all';
+  fileType?: 'images' | 'docs' | 'all';
   options?: string[];
   selectSource?: 'manual' | 'api';
   apiOptions?: {
@@ -96,6 +96,7 @@ export class FieldsStep {
     apiLabelField: new FormControl(''),
     apiValueField: new FormControl(''),
     apiSaveStrategy: new FormControl<'label' | 'value'>('value'),
+    fileType: new FormControl<'images' | 'docs' | 'all'>('images'),
     min: new FormControl(''),
     max: new FormControl(''),
     step: new FormControl(''),
@@ -577,6 +578,7 @@ export class FieldsStep {
         name: value.name!,
         type: value.type || 'text',
         required: value.required || false,
+        fileType: value.type === 'file' ? (value.fileType || 'images') : undefined,
         selectSource: value.type === 'select' ? selectSource : undefined,
         options:
           value.type === 'select' && selectSource === 'manual'
@@ -678,14 +680,19 @@ export class FieldsStep {
       apiLabelField: field.apiOptions?.labelField || '',
       apiValueField: field.apiOptions?.valueField || '',
       apiSaveStrategy: field.apiOptions?.saveStrategy || 'value',
+      fileType: field.fileType || 'images',
       min:
         field.type === 'text'
           ? field.validation?.minLength?.toString() || ''
-          : field.validation?.minValue?.toString() || '',
+          : field.type === 'file'
+            ? field.validation?.minFiles?.toString() || ''
+            : field.validation?.minValue?.toString() || '',
       max:
         field.type === 'text'
           ? field.validation?.maxLength?.toString() || ''
-          : field.validation?.maxValue?.toString() || '',
+          : field.type === 'file'
+            ? field.validation?.maxFiles?.toString() || ''
+            : field.validation?.maxValue?.toString() || '',
       step: field.validation?.step?.toString() || '',
       pattern: field.validation?.pattern || '',
       regexType: field.validation?.regexType || 'predefined',
@@ -743,6 +750,7 @@ export class FieldsStep {
       apiMode: 'new',
       apiPresetField: '',
       apiSaveStrategy: 'value',
+      fileType: 'images',
       regexType: 'predefined',
     });
     this.editingIndex.set(null);

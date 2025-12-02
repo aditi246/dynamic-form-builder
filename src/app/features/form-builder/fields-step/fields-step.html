@@ -180,6 +180,25 @@
             }
           </div>
 
+          @if (isFileType()) {
+          <div>
+            <label class="block text-sm font-medium text-text mb-2"
+              >File Type</label
+            >
+            <select
+              formControlName="fileType"
+              class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
+            >
+              <option value="images">Images only</option>
+              <option value="docs">Docs only (PDF, Word, Excel, etc.)</option>
+              <option value="all">All file types</option>
+            </select>
+            <p class="text-xs text-muted mt-1">
+              Choose the type of files to accept for this field.
+            </p>
+          </div>
+          }
+
           @if (isSelectType()) {
           <div class="space-y-3 border border-border rounded-md p-4">
             <div class="flex gap-4">

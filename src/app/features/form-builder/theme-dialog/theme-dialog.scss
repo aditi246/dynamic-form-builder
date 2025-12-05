@@ -1,0 +1,108 @@
+:host {
+  display: block;
+}
+
+.theme-dialog {
+  width: 260px;
+  max-width: 90vw;
+  padding: 14px;
+  background: var(--color-card, #ffffff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  color: var(--color-text, #0f172a);
+}
+
+.theme-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-muted, #6b7280);
+  margin: 0;
+}
+
+h3 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-bg, #f6f7f8);
+  color: var(--color-text, #0f172a);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.chip:hover {
+  background: var(--color-card, #ffffff);
+  transform: translateY(-1px);
+}
+
+.theme-dialog__grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.theme-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-bg, #f6f7f8);
+  color: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.theme-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-primary, #137fec);
+  background: var(--color-card, #ffffff);
+}
+
+.theme-card.theme-active {
+  border-color: var(--color-primary, #137fec);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+.theme-swatch {
+  width: 42px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.theme-name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.theme-sub {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-muted, #6b7280);
+}

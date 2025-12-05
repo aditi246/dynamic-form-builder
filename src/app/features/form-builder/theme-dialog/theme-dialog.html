@@ -1,0 +1,24 @@
+<div class="theme-dialog">
+  <div class="theme-dialog__header">
+    <div>
+      <p class="eyebrow">Themes</p>
+      <h3>Select a vibe</h3>
+    </div>
+    <button type="button" class="chip" (click)="nextTheme()">Next</button>
+  </div>
+  <div class="theme-dialog__grid">
+    @for (theme of themes; track theme.id) {
+    <button
+      type="button"
+      class="theme-card"
+      [class.theme-active]="theme.id === activeTheme()"
+      (click)="selectTheme(theme.id)"
+    >
+      <span class="theme-swatch" [style.background]="theme.accent"></span>
+      <div>
+        <p class="theme-name">{{ theme.name }}</p>
+      </div>
+    </button>
+    }
+  </div>
+</div>

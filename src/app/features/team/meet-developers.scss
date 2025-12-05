@@ -1,0 +1,247 @@
+:host {
+  display: block;
+}
+
+.team-page {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.2), transparent 25%),
+    radial-gradient(
+      circle at 80% 0%,
+      rgba(236, 72, 153, 0.18),
+      transparent 25%
+    ),
+    #0b1220;
+  scroll-behavior: smooth;
+  position: relative;
+}
+
+.bg-orb {
+  position: absolute;
+  filter: blur(80px);
+  opacity: 0.6;
+  border-radius: 9999px;
+  animation: floaty 16s ease-in-out infinite;
+}
+
+.orb-a {
+  width: 320px;
+  height: 320px;
+  top: -40px;
+  left: -60px;
+  background: #2563eb;
+  animation-delay: 0s;
+}
+
+.orb-b {
+  width: 260px;
+  height: 260px;
+  top: 120px;
+  right: 30px;
+  background: #a855f7;
+  animation-delay: 2s;
+}
+
+.orb-c {
+  width: 280px;
+  height: 280px;
+  bottom: -60px;
+  left: 20%;
+  background: #22d3ee;
+  animation-delay: 4s;
+}
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.6),
+    transparent 75%
+  );
+  pointer-events: none;
+  animation: gridMove 24s linear infinite;
+}
+
+.glass {
+  border-radius: 24px;
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+  animation: heroBreathe 16s ease-in-out infinite alternate;
+  overflow: hidden;
+}
+
+.hero-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 55%),
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(59, 130, 246, 0.25),
+      transparent 40%
+    );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.spark-line {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0)
+  );
+  transform: rotate(-12deg);
+  filter: blur(2px);
+  animation: shimmer 14s linear infinite;
+}
+
+.floating-card {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  animation: floaty 12s ease-in-out infinite;
+}
+
+.glow-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22d3ee, #2563eb);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+}
+
+.card-glow {
+  position: absolute;
+  inset: -40% 10% 40% -30%;
+  opacity: 0;
+  filter: blur(50px);
+  transition: opacity 0.6s ease;
+  transform: scale(1.05);
+}
+
+article:hover .card-glow {
+  opacity: 0.5;
+}
+
+.craft-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #0b1220;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.1;
+  min-width: 92px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.team-card {
+  opacity: 0;
+  transform: translateY(28px) scale(0.98);
+  animation: riseIn 0.8s ease forwards;
+}
+
+.team-card:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.team-card:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.team-card:nth-child(3) {
+  animation-delay: 0.25s;
+}
+.team-card:nth-child(4) {
+  animation-delay: 0.35s;
+}
+
+.highlight-chip {
+  position: relative;
+  overflow: hidden;
+}
+
+.highlight-chip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  transform: translateX(-120%);
+  animation: scan 4s linear infinite;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) rotate(-12deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(-12deg);
+  }
+}
+
+@keyframes gridMove {
+  0% {
+    background-position:
+      0 0,
+      0 0;
+  }
+  100% {
+    background-position:
+      120px 60px,
+      60px 120px;
+  }
+}
+
+@keyframes heroBreathe {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    transform: translateY(-6px) scale(1.01);
+  }
+}
+
+@keyframes riseIn {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}

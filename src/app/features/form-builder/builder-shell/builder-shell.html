@@ -1,4 +1,7 @@
-<div class="min-h-screen bg-bg flex flex-col">
+<div
+  class="min-h-screen flex flex-col builder-shell-root"
+  [attr.data-theme]="currentTheme()"
+>
   <header class="bg-primary text-white sticky top-0 z-20">
     <div class="px-6 py-4">
       <div class="flex items-center justify-between gap-4">
@@ -13,6 +16,88 @@
           }
         </div>
         <div class="flex items-center gap-2">
+          <div class="relative flex items-center theme-trigger">
+            <button
+              type="button"
+              class="theme-icon-btn"
+              cdkOverlayOrigin
+              #themeOrigin="cdkOverlayOrigin"
+              (click)="toggleThemeMenu()"
+              [attr.aria-label]="'Current theme ' + themeLabel()"
+            >
+              <svg viewBox="0 0 24 24" class="h-5 w-5">
+                <path
+                  fill="currentColor"
+                  d="M3 3h8v2H5v6H3V3zm5 8h5V6h-2v3H8v2zm0 2h2v5H8v-5zm4-4h5v2h-5v-2zm0 4h2v5h-2v-5zm4-8h4v4h-2V7h-2V5z"
+                />
+              </svg>
+              <span class="hidden sm:inline text-xs font-semibold"
+                >{{ themeLabel() }}</span
+              >
+            </button>
+            <ng-template
+              cdkConnectedOverlay
+              [cdkConnectedOverlayOrigin]="themeOrigin"
+              [cdkConnectedOverlayOpen]="showThemeMenu()"
+              [cdkConnectedOverlayHasBackdrop]="true"
+              [cdkConnectedOverlayBackdropClass]="'theme-backdrop'"
+              [cdkConnectedOverlayPanelClass]="'theme-overlay-pane'"
+              [cdkConnectedOverlayPositions]="[
+                {
+                  originX: 'end',
+                  originY: 'bottom',
+                  overlayX: 'end',
+                  overlayY: 'top',
+                  offsetY: 8
+                },
+                {
+                  originX: 'end',
+                  originY: 'top',
+                  overlayX: 'end',
+                  overlayY: 'bottom',
+                  offsetY: -8
+                }
+              ]"
+              (backdropClick)="closeThemeMenu()"
+              (detach)="closeThemeMenu()"
+            >
+              <div class="theme-dialog">
+                <div class="theme-dialog__header">
+                  <div>
+                    <p class="eyebrow">Themes</p>
+                    <h3>Select a vibe</h3>
+                  </div>
+                  <button type="button" class="chip" (click)="cycleTheme()">
+                    Next
+                  </button>
+                </div>
+                <div class="theme-dialog__grid">
+                  @for (theme of themes; track theme.id) {
+                  <button
+                    type="button"
+                    class="theme-card"
+                    [class.theme-active]="theme.id === currentTheme()"
+                    (click)="setTheme(theme.id); closeThemeMenu()"
+                  >
+                    <span
+                      class="theme-swatch"
+                      [style.background]="theme.accent"
+                    ></span>
+                    <div class="theme-text">
+                      <p class="theme-name">{{ theme.name }}</p>
+                    </div>
+                  </button>
+                  }
+                </div>
+              </div>
+            </ng-template>
+          </div>
+          <a
+            routerLink="/team"
+            class="px-3 py-2 border border-white/25 text-white rounded-md font-medium text-sm hover:bg-white/10 transition"
+          >
+            Meet the makers
+          </a>
           <button
             type="button"
             (click)="startTour(true)"
@@ -113,29 +198,36 @@
   </main>
 
   <footer
-    class="bg-white border-t border-border px-6 py-4 flex items-center justify-between fixed bottom-0 left-0 right-0 z-20"
+    class="bg-white border-t border-border px-6 py-4 flex items-center justify-between gap-4 fixed bottom-0 left-0 right-0 z-20"
   >
-    @if (currentStep() !== 'forms') {
-    <button
-      type="button"
-      (click)="handleBackClick()"
-      class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      Back
-    </button>
-    } @else {
-    <span></span>
-    } @if (submissionSaved()) {
-    <span class="text-sm text-muted">Submission saved to your browser.</span>
-    }
-    <button
-      type="button"
-      (click)="handleNextClick()"
-      class="px-6 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-      [disabled]="isPrimaryDisabled()"
-    >
-      {{ currentStep() === 'preview' ? 'Submit' : 'Next' }}
-    </button>
+    <div class="flex items-center gap-3">
+      @if (currentStep() !== 'forms') {
+      <button
+        type="button"
+        (click)="handleBackClick()"
+        class="px-6 py-2 border border-border text-text rounded-md hover:bg-bg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Back
+      </button>
+      } @else {
+      <span class="w-[84px]"></span>
+      }
+    </div>
+    <div class="flex-1 text-center">
+      @if (submissionSaved()) {
+      <span class="text-sm text-muted">Submission saved to your browser.</span>
+      }
+    </div>
+    <div>
+      <button
+        type="button"
+        (click)="handleNextClick()"
+        class="px-6 py-2 bg-primary text-white rounded-md hover:opacity-90 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        [disabled]="isPrimaryDisabled()"
+      >
+        {{ currentStep() === 'preview' ? 'Submit' : 'Next' }}
+      </button>
+    </div>
   </footer>
   <app-builder-tour-overlay></app-builder-tour-overlay>
 </div>

@@ -222,7 +222,9 @@ export class OpenAiService {
   /**
    * Makes a POST request to the Responses API
    */
-  private callResponsesApi<T = any>(body: ResponsesApiRequestBody): Observable<T> {
+  private callResponsesApi<T = any>(
+    body: ResponsesApiRequestBody,
+  ): Observable<T> {
     return this.http.post<T>(
       `${environment.openAiApiUrl}${this.openAiEndpoints.RESPONSES}`,
       body,
@@ -344,11 +346,11 @@ export class OpenAiService {
     formData.append('purpose', 'assistants');
 
     return this.http
-      .post<{ id: string }>(
-        `${environment.openAiApiUrl}${this.openAiEndpoints.FILES}`,
-        formData,
-        { headers: this.authHeaders },
-      )
+      .post<{
+        id: string;
+      }>(`${environment.openAiApiUrl}${this.openAiEndpoints.FILES}`, formData, {
+        headers: this.authHeaders,
+      })
       .pipe(map((res) => res.id));
   }
 

@@ -24,7 +24,9 @@ export class FileInputComponent {
   accept = input<string>('image/*');
   blurryIndex = input<number | null>(null);
   analyzingIndex = input<number | null>(null);
-  blurryMessage = input<string>('Blurry image detected. Please reupload the image.');
+  blurryMessage = input<string>(
+    'Blurry image detected. Please reupload the image.',
+  );
   documentQualityIndex = input<number | null>(null);
   analyzingDocumentIndex = input<number | null>(null);
   documentQualityMessage = input<string>('');
@@ -37,8 +39,12 @@ export class FileInputComponent {
     if (acceptValue === 'image/*') return 'Images';
     if (acceptValue === '*/*') return 'All files';
     // Check if accept contains document extensions
-    if (acceptValue.includes('.pdf') || acceptValue.includes('.doc') || 
-        acceptValue.includes('.xls') || acceptValue.includes('.ppt')) {
+    if (
+      acceptValue.includes('.pdf') ||
+      acceptValue.includes('.doc') ||
+      acceptValue.includes('.xls') ||
+      acceptValue.includes('.ppt')
+    ) {
       return 'Documents';
     }
     return 'All files';
@@ -50,7 +56,7 @@ export class FileInputComponent {
   isDocumentFile(file: File): boolean {
     const fileName = file.name.toLowerCase();
     const fileType = file.type.toLowerCase();
-    
+
     return (
       fileType === 'application/pdf' ||
       fileName.endsWith('.pdf') ||
@@ -71,7 +77,10 @@ export class FileInputComponent {
   filesAdded = output<File[]>();
   removeFile = output<number>();
   blurryAction = output<{ action: 'reupload' | 'keep'; index: number }>();
-  documentQualityAction = output<{ action: 'reupload' | 'keep'; index: number }>();
+  documentQualityAction = output<{
+    action: 'reupload' | 'keep';
+    index: number;
+  }>();
 
   onFileChange(event: Event) {
     const input = event.target as HTMLInputElement;

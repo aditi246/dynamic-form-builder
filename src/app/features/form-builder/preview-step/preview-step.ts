@@ -31,7 +31,10 @@ import { AudioTextareaComponent } from '../../../components/audio-textarea/audio
 import { FileInputComponent } from '../../../components/input-file/input-file';
 import { FormConfigService } from '../../../shared/services/form-config.service';
 import { RulesEngineService } from '../../../shared/services/rules-engine.service';
-import { OpenAiService, DocumentAnalysisResult } from '../../../shared/services/open-ai.service';
+import {
+  OpenAiService,
+  DocumentAnalysisResult,
+} from '../../../shared/services/open-ai.service';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 interface FilePreviewEntry {
@@ -628,7 +631,8 @@ export class PreviewStep implements OnInit, OnDestroy {
 
   getAcceptForField(field: FormField): string {
     if (field.fileType === 'all') return '*/*';
-    if (field.fileType === 'docs') return '.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp';
+    if (field.fileType === 'docs')
+      return '.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp';
     return 'image/*';
   }
 
@@ -746,7 +750,10 @@ export class PreviewStep implements OnInit, OnDestroy {
   }
 
   private setDocumentQualityWarning(fieldName: string, index: number | null) {
-    this.documentQualityWarnings.update((map) => ({ ...map, [fieldName]: index }));
+    this.documentQualityWarnings.update((map) => ({
+      ...map,
+      [fieldName]: index,
+    }));
   }
 
   private setAnalyzingDocument(fieldName: string, index: number | null) {
@@ -756,10 +763,16 @@ export class PreviewStep implements OnInit, OnDestroy {
   /**
    * Runs document quality check for PDF or document files
    */
-  private runDocumentQualityCheck(fieldName: string, index: number, file: File) {
+  private runDocumentQualityCheck(
+    fieldName: string,
+    index: number,
+    file: File,
+  ) {
     this.setAnalyzingDocument(fieldName, index);
-    
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+    const isPdf =
+      file.type === 'application/pdf' ||
+      file.name.toLowerCase().endsWith('.pdf');
     const analysis$ = isPdf
       ? this.openAiService.analyzePdf(file)
       : this.openAiService.analyzeImage(file);
@@ -805,7 +818,7 @@ export class PreviewStep implements OnInit, OnDestroy {
    */
   getDocumentQualityMessage(fieldName: string, index: number | null): string {
     if (index === null || index === undefined) return '';
-    
+
     const files = this.filePreviews()[fieldName] || [];
     const file = files[index];
     if (!file?.documentQuality) return '';

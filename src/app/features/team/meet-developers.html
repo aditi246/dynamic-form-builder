@@ -1,0 +1,222 @@
+<div class="team-page relative min-h-screen overflow-hidden text-white">
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <div class="bg-orb orb-c"></div>
+  <div class="grid-overlay"></div>
+
+  <section class="relative max-w-6xl mx-auto px-6 pt-14 lg:pt-16 pb-10">
+    <div
+      class="glass hero-panel relative overflow-hidden border border-white/10 bg-white/5"
+    >
+      <div class="hero-veil"></div>
+      <div class="relative grid gap-10 lg:grid-cols-[1.8fr_1fr] p-8 lg:p-10">
+        <div class="space-y-4">
+          <p class="text-xs uppercase tracking-[0.35em] text-primary">
+            Meet the makers
+          </p>
+          <h1 class="text-4xl sm:text-5xl font-semibold leading-tight">
+            Next-gen form builder, crafted by humans
+            <span class="text-primary">and AI</span>
+          </h1>
+          <p class="text-lg text-gray-200/90 max-w-2xl">
+            We obsess over fast iteration, polished UX, and reliable rules so
+            your forms feel alive. Here’s the crew behind the builder you’re
+            using right now.
+          </p>
+          <div class="flex flex-wrap gap-3 pt-2">
+            <a
+              routerLink="/"
+              class="inline-flex items-center gap-2 rounded-full bg-white text-primary px-4 py-2 font-semibold transition hover:shadow-lg hover:-translate-y-0.5"
+            >
+              ← Back to builder
+            </a>
+            <a
+              routerLink="."
+              fragment="team"
+              class="inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2 font-semibold transition hover:border-white hover:-translate-y-0.5"
+            >
+              Scroll to the crew
+            </a>
+          </div>
+          <div class="flex flex-wrap gap-6 pt-4 text-sm text-gray-200/80">
+            @for (item of highlights; track item) {
+            <div
+              class="highlight-chip flex items-center gap-2 rounded-full bg-white/5 px-3 py-2"
+            >
+              <span
+                class="h-2 w-2 rounded-full bg-primary animate-pulse"
+              ></span>
+              <span>{{ item }}</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <div class="relative flex flex-col gap-4">
+          <div class="spark-line"></div>
+          <div
+            class="floating-card relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6"
+          >
+            <p class="text-sm uppercase tracking-[0.25em] text-primary/80">
+              Build radar
+            </p>
+            <h3 class="mt-2 text-2xl font-semibold">
+              What we’re optimizing now
+            </h3>
+            <ul class="mt-4 space-y-3 text-sm text-gray-200/80">
+              <li class="grid grid-cols-[auto_1fr] items-center gap-3">
+                <span class="glow-dot"></span>
+                <span>Snappier field rendering for rules-heavy forms.</span>
+              </li>
+              <li class="grid grid-cols-[auto_1fr] items-center gap-3">
+                <span class="glow-dot"></span>
+                <span
+                  >Micro-animations that signal saved states in under
+                  400ms.</span
+                >
+              </li>
+              <li class="grid grid-cols-[auto_1fr] items-center gap-3">
+                <span class="glow-dot"></span>
+                <span
+                  >Context-aware tutorials so new teammates onboard fast.</span
+                >
+              </li>
+            </ul>
+            <div
+              class="mt-6 flex items-center justify-between text-xs text-gray-200/70"
+            >
+              <span>Updated hourly</span>
+              <span
+                class="inline-flex items-center gap-1 rounded-full bg-primary/20 px-3 py-1 text-primary"
+              >
+                Live signal
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="team" class="relative max-w-6xl mx-auto px-6 pb-16">
+    <div class="flex flex-col gap-3 pb-6">
+      <p class="text-xs uppercase tracking-[0.25em] text-primary">The crew</p>
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <h2 class="text-3xl sm:text-4xl font-semibold">
+          Builders behind the canvas
+        </h2>
+        <div
+          class="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs text-gray-200/80"
+        >
+          Hand-off ready · Human + AI pairing
+        </div>
+      </div>
+      <p class="text-gray-200/80 max-w-3xl">
+        Four minds, one builder. We pair design intuition with engineering rigor
+        and keep Codex in the loop to ship faster than the brief.
+      </p>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2">
+      @for (member of members; track member.name) {
+      <article
+        class="team-card relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur group"
+      >
+        <div class="card-glow" [style.background]="member.accent"></div>
+        <div class="flex items-start gap-4">
+          <div class="relative">
+            @if (member.avatar) {
+            <img
+              [src]="member.avatar"
+              alt="{{ member.name }} headshot"
+              class="h-20 w-20 rounded-full object-cover ring-2 ring-white/40 shadow-lg"
+            />
+            } @else {
+            <div
+              class="h-20 w-20 rounded-full ring-2 ring-white/40 shadow-lg grid place-items-center text-lg font-semibold"
+              [style.background]="member.accent"
+            >
+              🤖
+            </div>
+            }
+          </div>
+          <div class="flex-1 space-y-2">
+            <div class="flex items-start justify-between gap-2 flex-wrap">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <p class="text-lg font-semibold">{{ member.name }}</p>
+                  <span class="craft-badge" [style.background]="member.accent">
+                    {{ member.focus }}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-200/70">{{ member.title }}</p>
+              </div>
+              @if (member.isAI) {
+              <span
+                class="rounded-full bg-primary/15 px-3 py-1 text-[11px] font-semibold text-primary"
+              >
+                AI collaborator
+              </span>
+              }
+            </div>
+            <p class="text-sm leading-relaxed text-gray-200/85">
+              {{ member.bio }}
+            </p>
+            <div class="flex items-center gap-3 pt-1 text-sm min-h-[38px]">
+              @if (member.linkedin) {
+              <a
+                [href]="member.linkedin"
+                target="_blank"
+                rel="noreferrer"
+                class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-gray-100 transition hover:border-primary hover:text-primary"
+              >
+                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 448 512">
+                  <path
+                    d="M100.28 448H7.4V148.9h92.88zm-46.44-340a53.64 53.64 0 1153.64-53.64 53.64 53.64 0 01-53.64 53.64zM447.9 448h-92.68V302.4c0-34.7-.7-79.2-48.27-79.2-48.3 0-55.7 37.7-55.7 76.7V448h-92.8V148.9h89.1v40.8h1.3c12.4-23.5 42.5-48.3 87.5-48.3 93.6 0 110.8 61.6 110.8 141.7z"
+                  />
+                </svg>
+                LinkedIn
+              </a>
+              }
+            </div>
+          </div>
+        </div>
+      </article>
+      }
+    </div>
+  </section>
+
+  <section class="relative border-t border-white/10 bg-white/5">
+    <div
+      class="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+    >
+      <div class="space-y-2">
+        <p class="text-primary text-xs uppercase tracking-[0.25em]">
+          Still curious?
+        </p>
+        <h3 class="text-2xl font-semibold">
+          Let’s ship the next interaction together.
+        </h3>
+        <p class="text-sm text-gray-200/80">
+          Ping us if you want a walkthrough or if you have ideas to refine the
+          builder.
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <a
+          routerLink="/"
+          class="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 font-semibold text-white shadow-lg shadow-primary/30 transition hover:-translate-y-0.5"
+        >
+          Return to builder
+        </a>
+        <a
+          routerLink="."
+          fragment="team"
+          class="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 font-semibold transition hover:border-white hover:-translate-y-0.5"
+        >
+          Meet the crew
+        </a>
+      </div>
+    </div>
+  </section>
+</div>

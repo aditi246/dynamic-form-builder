@@ -578,7 +578,8 @@ export class FieldsStep {
         name: value.name!,
         type: value.type || 'text',
         required: value.required || false,
-        fileType: value.type === 'file' ? (value.fileType || 'images') : undefined,
+        fileType:
+          value.type === 'file' ? value.fileType || 'images' : undefined,
         selectSource: value.type === 'select' ? selectSource : undefined,
         options:
           value.type === 'select' && selectSource === 'manual'

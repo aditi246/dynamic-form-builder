@@ -79,6 +79,7 @@ export class PreviewStep implements OnInit, OnDestroy {
   submittedValues = signal<Record<string, any> | null>(null);
   optionLookup = signal<Record<string, Record<string, SelectOption>>>({});
   payloadMode = signal<'value' | 'pair' | 'full'>('value');
+  ruleWarnings = signal<string[]>([]);
 
   aiResponse = signal<any | null>(null);
 
@@ -145,11 +146,13 @@ export class PreviewStep implements OnInit, OnDestroy {
       this.syncStaticOptionLookup();
       this.loadDynamicOptions();
       this.applyRules();
+      this.applyComplianceErrors();
       this.updateLiveValuesFromForm();
       this.applyInitialValues();
       this.valueChangesSub?.unsubscribe();
       this.valueChangesSub = this.previewForm.valueChanges.subscribe(() => {
         this.applyRules();
+        this.applyComplianceErrors();
         this.updateLiveValuesFromForm();
       });
     } else {
@@ -173,6 +176,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     this.optionLookup.set({});
     this.valueChangesSub?.unsubscribe();
     this.lastPatchedInitialKey = null;
+    this.ruleWarnings.set([]);
   }
 
   private buildForm() {
@@ -216,22 +220,7 @@ export class PreviewStep implements OnInit, OnDestroy {
       }
 
       // Set default value
-      let defaultValue: any = '';
-      if (
-        field.default !== undefined &&
-        field.default !== null &&
-        field.default !== ''
-      ) {
-        defaultValue = field.default;
-      } else {
-        if (field.type === 'checkbox') {
-          defaultValue = false;
-        } else if (field.type === 'number') {
-          defaultValue = null;
-        } else if (field.type === 'file') {
-          defaultValue = [];
-        }
-      }
+      const defaultValue = this.getDefaultValue(field);
 
       group[field.name] = new FormControl(
         defaultValue,
@@ -242,7 +231,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     this.previewForm = new FormGroup(group);
   }
 
-  private applyRules() {
+  private applyRules(baseWarnings: string[] = []): string[] {
     const contextValues =
       this.formsService.getFormContext(this.formsService.getCurrentFormId()) ||
       [];
@@ -276,20 +265,17 @@ export class PreviewStep implements OnInit, OnDestroy {
         control.enable({ emitEvent: false });
       }
 
-      const existingErrors = control.errors || {};
+      const existingErrors = { ...(control.errors || {}) };
       if (evaluation.fieldErrors[field.name]) {
-        control.setErrors({
-          ...existingErrors,
-          rule: evaluation.fieldErrors[field.name],
-        });
+        existingErrors['rule'] = evaluation.fieldErrors[field.name];
+        control.markAsTouched({ onlySelf: true });
+        control.markAsDirty({ onlySelf: true });
       } else {
-        if (existingErrors['rule']) {
-          delete existingErrors['rule'];
-        }
-        control.setErrors(
-          Object.keys(existingErrors).length ? existingErrors : null,
-        );
+        delete existingErrors['rule'];
       }
+      control.setErrors(
+        Object.keys(existingErrors).length ? existingErrors : null,
+      );
 
       const hiddenOptions = evaluation.optionHides[field.name];
       if (hiddenOptions && hiddenOptions.size) {
@@ -310,6 +296,14 @@ export class PreviewStep implements OnInit, OnDestroy {
         }
       }
     });
+
+    const hiddenWarnings = this.clearHiddenFieldValues(evaluation.hiddenFields);
+    const mergedWarnings = this.mergeWarnings([
+      ...baseWarnings,
+      ...hiddenWarnings,
+    ]);
+    this.ruleWarnings.set(mergedWarnings);
+    return mergedWarnings;
   }
 
   getFieldControl(fieldName: string): FormControl | null {
@@ -351,6 +345,9 @@ export class PreviewStep implements OnInit, OnDestroy {
     }
     if (control.errors['maxFiles']) {
       return `Upload no more than ${control.errors['maxFiles'].maxFiles} file(s).`;
+    }
+    if (control.errors['invalidOption']) {
+      return 'Please choose one of the available options.';
     }
     if (control.errors['pattern']) {
       return 'Invalid format.';
@@ -408,8 +405,8 @@ export class PreviewStep implements OnInit, OnDestroy {
         const list = this.extractItems(res, field.apiOptions?.itemsPath);
         const mapped = Array.isArray(list)
           ? list
-              .map((item: any) => this.mapOption(item, field))
-              .filter((x): x is SelectOption => !!x)
+            .map((item: any) => this.mapOption(item, field))
+            .filter((x): x is SelectOption => !!x)
           : [];
         if (!mapped.length) {
           this.optionErrors.update((map) => ({
@@ -419,6 +416,7 @@ export class PreviewStep implements OnInit, OnDestroy {
         }
         this.selectOptions.update((map) => ({ ...map, [field.name]: mapped }));
         this.updateOptionLookup(field.name, mapped);
+        this.applyComplianceErrors();
         this.updateLiveValuesFromForm();
         this.loadingOptions.update((map) => ({ ...map, [field.name]: false }));
       },
@@ -496,6 +494,13 @@ export class PreviewStep implements OnInit, OnDestroy {
   }
 
   onSubmit() {
+    this.markAllControlsTouched();
+    this.applyRules();
+    this.previewForm.updateValueAndValidity({ emitEvent: false });
+    this.applyComplianceErrors();
+    if (this.previewForm.invalid) {
+      return;
+    }
     const payload = this.buildPayload();
     this.submittedValues.set(this.buildDisplaySnapshot(payload));
     this.nextStep.emit(payload);
@@ -532,7 +537,7 @@ export class PreviewStep implements OnInit, OnDestroy {
           const formValues = JSON.parse(jsonText);
           console.log(formValues);
 
-          this.previewForm.patchValue(formValues);
+          this.applyExternalValues(formValues);
           if (this.audioTextarea) {
             this.audioTextarea.setAiProcessingComplete();
           }
@@ -574,7 +579,7 @@ export class PreviewStep implements OnInit, OnDestroy {
             const formValues = JSON.parse(jsonText);
             console.log('Extracted form values from file:', formValues);
 
-            this.previewForm.patchValue(formValues);
+            this.applyExternalValues(formValues);
           } catch (error) {
             console.error('Error parsing AI response from file:', error);
           }
@@ -627,6 +632,7 @@ export class PreviewStep implements OnInit, OnDestroy {
   }
 
   getAcceptForField(field: FormField): string {
+    if (field.fileType === 'images') return 'image/*';
     if (field.fileType === 'all') return '*/*';
     if (field.fileType === 'docs') return '.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.ods,.odp';
     return 'image/*';
@@ -758,11 +764,11 @@ export class PreviewStep implements OnInit, OnDestroy {
    */
   private runDocumentQualityCheck(fieldName: string, index: number, file: File) {
     this.setAnalyzingDocument(fieldName, index);
-    
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    const analysis$ = isPdf
-      ? this.openAiService.analyzePdf(file)
-      : this.openAiService.analyzeImage(file);
+
+    const isImage = file.type.startsWith('image/');
+    const analysis$ = isImage
+      ? this.openAiService.analyzeImage(file)
+      : this.openAiService.analyzePdf(file);
 
     analysis$.subscribe({
       next: (result: DocumentAnalysisResult) => {
@@ -795,9 +801,7 @@ export class PreviewStep implements OnInit, OnDestroy {
     // Show warning if document has quality issues
     const hasIssues =
       result.isLikelyTampered || (result.unreadableRegions?.length ?? 0) > 0;
-    if (hasIssues) {
-      this.setDocumentQualityWarning(fieldName, index);
-    }
+    this.setDocumentQualityWarning(fieldName, hasIssues ? index : null);
   }
 
   /**
@@ -946,6 +950,182 @@ export class PreviewStep implements OnInit, OnDestroy {
     if (!base) {
       this.optionLookup.set(target);
     }
+  }
+
+  private applyComplianceErrors() {
+    this.fields().forEach((field) => {
+      const control = this.getFieldControl(field.name);
+      if (!control || control.disabled) return;
+
+      const nextErrors = { ...(control.errors || {}) };
+
+      if (field.type === 'select') {
+        const allowedOptions = new Set(
+          this.getOptionsForField(field).map((opt) =>
+            this.normalizeOptionKey(opt.value),
+          ),
+        );
+        const hasInvalidOption = this.hasInvalidSelectValue(
+          control.value,
+          allowedOptions,
+          field,
+        );
+
+        if (hasInvalidOption) {
+          nextErrors['invalidOption'] = true;
+          control.markAsTouched({ onlySelf: true });
+          control.markAsDirty({ onlySelf: true });
+        } else {
+          delete nextErrors['invalidOption'];
+        }
+      }
+
+      if (nextErrors['rule']) {
+        control.markAsTouched({ onlySelf: true });
+        control.markAsDirty({ onlySelf: true });
+      }
+
+      control.setErrors(
+        Object.keys(nextErrors).length ? nextErrors : null,
+      );
+    });
+  }
+
+  private hasInvalidSelectValue(
+    value: any,
+    allowedOptions: Set<string>,
+    field: FormField,
+  ): boolean {
+    if (!allowedOptions.size) {
+      return false;
+    }
+
+    if (field.selectSource === 'api' && this.isOptionsLoading(field.name)) {
+      return false;
+    }
+
+    if (Array.isArray(value)) {
+      if (!value.length) return false;
+      return value.some((v) => !allowedOptions.has(this.normalizeOptionKey(v)));
+    }
+
+    if (
+      value === null ||
+      value === undefined ||
+      (typeof value === 'string' && value.trim() === '')
+    ) {
+      return false;
+    }
+
+    return !allowedOptions.has(this.normalizeOptionKey(value));
+  }
+
+  private normalizeOptionKey(value: any): string {
+    return value === null || value === undefined ? '' : String(value);
+  }
+
+  private markAllControlsTouched() {
+    Object.values(
+      this.previewForm.controls as Record<string, AbstractControl>,
+    ).forEach((control: AbstractControl) => {
+      control.markAsTouched({ onlySelf: true });
+      control.markAsDirty({ onlySelf: true });
+    });
+  }
+
+  private applyExternalValues(formValues: Record<string, any>) {
+    const allowedValues: Record<string, any> = {};
+    const warnings: string[] = [];
+
+    Object.entries(formValues || {}).forEach(([key, value]) => {
+      const control = this.getFieldControl(key);
+      if (!control) return;
+      if (control.disabled || this.isHidden(key)) {
+        const field = this.fields().find((f) => f.name === key);
+        warnings.push(
+          `${field?.label || key} ignored because the field is hidden/disabled by rules.`,
+        );
+        return;
+      }
+      allowedValues[key] = value;
+    });
+
+    this.previewForm.patchValue(allowedValues, { emitEvent: false });
+    this.markAllControlsTouched();
+    this.applyRules(warnings);
+    this.previewForm.updateValueAndValidity({ emitEvent: false });
+    this.applyComplianceErrors();
+    this.updateLiveValuesFromForm();
+  }
+
+  private getDefaultValue(field: FormField): any {
+    if (
+      field.default !== undefined &&
+      field.default !== null &&
+      field.default !== ''
+    ) {
+      return field.default;
+    }
+    if (field.type === 'checkbox') return false;
+    if (field.type === 'number') return null;
+    if (field.type === 'file') return [];
+    return '';
+  }
+
+  private hasNonEmptyValue(value: any): boolean {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    if (Array.isArray(value)) return value.length > 0;
+    if (value instanceof File) return true;
+    if (typeof value === 'object') return Object.keys(value).length > 0;
+    return value !== '';
+  }
+
+  private clearHiddenFieldValues(hidden: Set<string>): string[] {
+    const warnings: string[] = [];
+    hidden.forEach((name) => {
+      const field = this.fields().find((f) => f.name === name);
+      const control = this.getFieldControl(name);
+      if (!field || !control) return;
+
+      if (this.hasNonEmptyValue(control.value)) {
+        control.setValue(this.getDefaultValue(field), { emitEvent: false });
+        if (field.type === 'file') {
+          this.filePreviews.update((map) => {
+            const copy = { ...map };
+            delete copy[name];
+            return copy;
+          });
+          this.blurryWarnings.update((map) => {
+            const copy = { ...map };
+            delete copy[name];
+            return copy;
+          });
+          this.analyzingImages.update((map) => {
+            const copy = { ...map };
+            delete copy[name];
+            return copy;
+          });
+        }
+        warnings.push(
+          `${field.label || name} cleared because the field is hidden by current rules.`,
+        );
+      }
+    });
+    return warnings;
+  }
+
+  private mergeWarnings(warnings: string[]): string[] {
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    warnings.forEach((w) => {
+      if (!w) return;
+      if (!seen.has(w)) {
+        merged.push(w);
+        seen.add(w);
+      }
+    });
+    return merged;
   }
 
   resetForm() {

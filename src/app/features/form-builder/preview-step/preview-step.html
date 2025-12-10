@@ -3,23 +3,27 @@
     <!-- Form preview (60%) -->
     <div
       class="w-[60%] bg-card rounded-md shadow-sm p-6 border border-border flex flex-col min-h-0 h-[calc(100vh-260px)]"
-      data-tour-anchor="preview-pane"
-    >
+      data-tour-anchor="preview-pane">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-lg font-semibold text-text">Form Preview</h2>
-        <button
-          type="button"
-          (click)="resetForm()"
-          class="px-4 py-2 border border-border rounded-md hover:bg-bg font-medium flex items-center gap-2 transition-colors text-text"
-        >
+        <button type="button" (click)="resetForm()"
+          class="px-4 py-2 border border-border rounded-md hover:bg-bg font-medium flex items-center gap-2 transition-colors text-text">
           Reset
         </button>
       </div>
 
-      <form
-        [formGroup]="previewForm"
-        class="space-y-6 overflow-y-auto pr-1 flex-1"
-      >
+      @if (ruleWarnings().length) {
+      <div class="mb-4 p-3 rounded-md border border-warning/40 bg-warning/10">
+        <p class="text-sm font-semibold text-warning mb-1">Rule warnings</p>
+        <ul class="list-disc list-inside text-sm text-warning space-y-1">
+          @for (warn of ruleWarnings(); track warn) {
+          <li>{{ warn }}</li>
+          }
+        </ul>
+      </div>
+      }
+
+      <form [formGroup]="previewForm" class="space-y-6 overflow-y-auto pr-1 flex-1">
         @for (field of fields(); track field.name) { @if (!isHidden(field.name)
         && !isContextField(field.name)) {
         <div>
@@ -30,41 +34,28 @@
           </label>
 
           @if (field.type === 'text' || field.type === 'email') {
-          <input
-            [type]="field.type"
-            [formControlName]="field.name"
+          <input [type]="field.type" [formControlName]="field.name"
             [placeholder]="'e.g. ' + (field.type === 'email' ? 'john.doe@example.com' : field.label.toLowerCase())"
-            [class.border-danger]="isFieldInvalid(field.name)"
-            [class.border-border]="!isFieldInvalid(field.name)"
-            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-          />
+            [class.border-danger]="isFieldInvalid(field.name)" [class.border-border]="!isFieldInvalid(field.name)"
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card" />
           @if (isFieldInvalid(field.name)) {
           <p class="text-sm text-danger mt-1">
             {{ getFieldError(field.name) }}
           </p>
           } } @else if (field.type === 'number') {
-          <input
-            type="number"
-            [formControlName]="field.name"
-            [step]="field.validation?.step"
-            [min]="field.validation?.minValue ?? null"
-            [max]="field.validation?.maxValue ?? null "
-            [class.border-danger]="isFieldInvalid(field.name)"
-            [class.border-border]="!isFieldInvalid(field.name)"
-            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card"
-          />
+          <input type="number" [formControlName]="field.name" [step]="field.validation?.step"
+            [min]="field.validation?.minValue ?? null" [max]="field.validation?.maxValue ?? null "
+            [class.border-danger]="isFieldInvalid(field.name)" [class.border-border]="!isFieldInvalid(field.name)"
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card" />
           @if (isFieldInvalid(field.name)) {
           <p class="text-sm text-danger mt-1">
             {{ getFieldError(field.name) }}
           </p>
           } } @else if (field.type === 'select') {
           <div class="relative">
-            <select
-              [formControlName]="field.name"
-              [class.border-danger]="isFieldInvalid(field.name)"
+            <select [formControlName]="field.name" [class.border-danger]="isFieldInvalid(field.name)"
               [class.border-border]="!isFieldInvalid(field.name)"
-              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card appearance-none pr-10"
-            >
+              class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card appearance-none pr-10">
               <option value="">Select {{ field.label.toLowerCase() }}</option>
               @if (isOptionsLoading(field.name)) {
               <option disabled>Loading...</option>
@@ -72,13 +63,8 @@
               <option [value]="option.value">{{ option.label }}</option>
               }
             </select>
-            <div
-              class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
-            >
-              <app-icon
-                name="chevron-down"
-                class="w-5 h-5 text-muted"
-              ></app-icon>
+            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <app-icon name="chevron-down" class="w-5 h-5 text-muted"></app-icon>
             </div>
           </div>
           @if (getOptionError(field.name)) {
@@ -94,11 +80,7 @@
           </p>
           } } @else if (field.type === 'checkbox') {
           <label class="inline-flex items-center gap-2 text-sm text-text">
-            <input
-              type="checkbox"
-              [formControlName]="field.name"
-              class="w-4 h-4 text-primary border-border rounded"
-            />
+            <input type="checkbox" [formControlName]="field.name" class="w-4 h-4 text-primary border-border rounded" />
             <span [innerHTML]="field.label"></span>
           </label>
           @if (isFieldInvalid(field.name)) {
@@ -106,33 +88,23 @@
             {{ getFieldError(field.name) }}
           </p>
           } } @else if (field.type === 'textarea') {
-          <textarea
-            [formControlName]="field.name"
-            rows="4"
-            [placeholder]="'e.g. ' + field.label.toLowerCase()"
-            [class.border-danger]="isFieldInvalid(field.name)"
-            [class.border-border]="!isFieldInvalid(field.name)"
-            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"
-          ></textarea>
+          <textarea [formControlName]="field.name" rows="4" [placeholder]="'e.g. ' + field.label.toLowerCase()"
+            [class.border-danger]="isFieldInvalid(field.name)" [class.border-border]="!isFieldInvalid(field.name)"
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-text bg-card resize-none"></textarea>
           @if (isFieldInvalid(field.name)) {
           <p class="text-sm text-danger mt-1">
             {{ getFieldError(field.name) }}
           </p>
           } } @else if (field.type === 'file') {
-          <app-file-input
-            [files]="filePreviews()[field.name] || []"
-            [multiple]="true"
-            [accept]="getAcceptForField(field)"
-            [blurryIndex]="blurryWarnings()[field.name] ?? null"
+          <app-file-input [files]="filePreviews()[field.name] || []" [multiple]="true"
+            [accept]="getAcceptForField(field)" [blurryIndex]="blurryWarnings()[field.name] ?? null"
             [analyzingIndex]="analyzingImages()[field.name] ?? null"
             [documentQualityIndex]="documentQualityWarnings()[field.name] ?? null"
             [analyzingDocumentIndex]="analyzingDocuments()[field.name] ?? null"
             [documentQualityMessage]="field.fileType === 'docs' ? getDocumentQualityMessage(field.name, documentQualityWarnings()[field.name] ?? null) : ''"
-            (filesAdded)="onFilesAdded(field, $event)"
-            (removeFile)="onRemoveFile(field.name, $event)"
+            (filesAdded)="onFilesAdded(field, $event)" (removeFile)="onRemoveFile(field.name, $event)"
             (blurryAction)="onBlurryAction(field.name, $event)"
-            (documentQualityAction)="onDocumentQualityAction(field.name, $event)"
-          ></app-file-input>
+            (documentQualityAction)="onDocumentQualityAction(field.name, $event)"></app-file-input>
           @if (isFieldInvalid(field.name)) {
           <p class="text-sm text-danger mt-1">
             {{ getFieldError(field.name) }}
@@ -145,51 +117,37 @@
 
     <!-- Voice/AI and response (40%) -->
     <div class="w-[40%] min-h-0 h-[calc(100vh-260px)]">
-      <div
-        class="bg-card rounded-md shadow-sm border border-border h-full flex flex-col overflow-hidden"
-      >
+      <div class="bg-card rounded-md shadow-sm border border-border h-full flex flex-col overflow-hidden">
         <div class="overflow-auto flex-1 divide-y divide-border">
           <div class="p-6" data-tour-anchor="preview-ai">
             <h2 class="text-lg font-semibold text-text mb-4">
               Voice or AI command
             </h2>
-            <app-audio-textarea
-              #audioTextarea
-              (textChange)="onAiCommandChange($event)"
-              (fileUpload)="onFileUpload($event)"
-            >
+            <app-audio-textarea #audioTextarea (textChange)="onAiCommandChange($event)"
+              (fileUpload)="onFileUpload($event)">
             </app-audio-textarea>
           </div>
 
           <div class="p-6 flex flex-col min-h-[240px] gap-3">
-            <div
-              class="flex items-center justify-between"
-              data-tour-anchor="preview-payload"
-            >
+            <div class="flex items-center justify-between" data-tour-anchor="preview-payload">
               <div>
                 <h2 class="text-lg font-semibold text-text">Form response</h2>
                 <p class="text-sm text-muted">Live form values.</p>
               </div>
               <div class="flex items-center gap-2">
                 <label class="text-xs text-muted">Payload</label>
-                <select
-                  class="px-2 py-1 text-sm border border-border rounded-md bg-card text-text"
-                  [value]="payloadMode()"
-                  (change)="setPayloadMode($any($event.target).value)"
-                >
+                <select class="px-2 py-1 text-sm border border-border rounded-md bg-card text-text"
+                  [value]="payloadMode()" (change)="setPayloadMode($any($event.target).value)">
                   <option value="value">Value only</option>
                   <option value="pair">Key + value</option>
                   <option value="full">Full option object</option>
                 </select>
               </div>
             </div>
-            <div
-              class="border border-dashed border-border rounded-md p-4 bg-bg flex-1 min-h-[160px] overflow-auto"
-            >
+            <div class="border border-dashed border-border rounded-md p-4 bg-bg flex-1 min-h-[160px] overflow-auto">
               @if (submittedValues()) {
               <pre class="text-xs text-text whitespace-pre-wrap break-words">
-{{ submittedValues() | json }}</pre
-              >
+{{ submittedValues() | json }}</pre>
               } @else {
               <p class="text-sm text-muted">
                 Submit the form to see captured values here.

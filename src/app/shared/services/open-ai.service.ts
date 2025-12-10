@@ -37,7 +37,10 @@ export class OpenAiService {
     FILES: '/v1/files',
   };
   private readonly localStorageKey = 'openAiApiKey';
-  constructor(private http: HttpClient) {}
+  private readonly complianceGuardMessage =
+    '\nRespect field requirements, allowed options, and validation rules (min/max, patterns). If a value is missing or would violate those constraints, return an empty value for that field.';
+
+  constructor(private http: HttpClient) { }
 
   private getApiKey(): string {
     if (environment.openAiApiKey) {
@@ -110,7 +113,7 @@ export class OpenAiService {
     const currentValues =
       Object.keys(currentFormValues).length > 0
         ? PROMPTS.CURRENT_VALUES_PREFIX +
-          JSON.stringify(currentFormValues, null, 2)
+        JSON.stringify(currentFormValues, null, 2)
         : '';
 
     return formatStr(
@@ -118,7 +121,7 @@ export class OpenAiService {
       userText,
       fieldsDescription,
       currentValues,
-    );
+    ).concat(this.complianceGuardMessage);
   }
 
   /**
@@ -259,11 +262,11 @@ export class OpenAiService {
     return isImage
       ? this.prepareImageContent(file)
       : this.uploadFileToOpenAi(file).pipe(
-          map((fileId) => ({
-            type: 'input_file' as const,
-            file_id: fileId,
-          })),
-        );
+        map((fileId) => ({
+          type: 'input_file' as const,
+          file_id: fileId,
+        })),
+      );
   }
 
   /**
@@ -278,7 +281,7 @@ export class OpenAiService {
     const currentValues =
       Object.keys(currentFormValues).length > 0
         ? PROMPTS.CURRENT_VALUES_PREFIX +
-          JSON.stringify(currentFormValues, null, 2)
+        JSON.stringify(currentFormValues, null, 2)
         : '';
 
     const isImage = file.type.startsWith('image/');
@@ -286,7 +289,7 @@ export class OpenAiService {
       ? PROMPTS.FILE_EXTRACTION_IMAGE
       : PROMPTS.FILE_EXTRACTION_DOCUMENT;
 
-    return formatStr(promptTemplate, fieldsDescription, currentValues);
+    return formatStr(promptTemplate, fieldsDescription, currentValues).concat(this.complianceGuardMessage);
   }
 
   // ============================================================================
@@ -430,18 +433,18 @@ export class OpenAiService {
     return {
       isLikelyTampered: Boolean(
         payload.isLikelyTampered ??
-          payload.is_likely_tampered ??
-          payload.tampered ??
-          false,
+        payload.is_likely_tampered ??
+        payload.tampered ??
+        false,
       ),
       unreadableRegions: Array.isArray(payload.unreadableRegions)
         ? payload.unreadableRegions
         : Array.isArray(payload.unreadable_regions)
           ? payload.unreadable_regions.map((r: any) =>
-              typeof r === 'string'
-                ? { description: r }
-                : { description: r.description || r.desc || String(r) },
-            )
+            typeof r === 'string'
+              ? { description: r }
+              : { description: r.description || r.desc || String(r) },
+          )
           : [],
       hasKeyInfo: Boolean(
         payload.hasKeyInfo ?? payload.has_key_info ?? payload.hasKey ?? false,

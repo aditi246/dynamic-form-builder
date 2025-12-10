@@ -49,6 +49,8 @@ export class RulesStep implements OnInit {
   optionErrors = signal<Record<string, string>>({});
   groupedRules = computed(() => {
     const groups: { targetField: string; rules: CustomRule[] }[] = [];
+    const fieldOrder = new Map<string, number>();
+    this.fields().forEach((field, index) => fieldOrder.set(field.name, index));
     const byTarget: Record<string, CustomRule[]> = {};
     this.rules().forEach((rule) => {
       if (!byTarget[rule.action.targetField]) {
@@ -56,9 +58,22 @@ export class RulesStep implements OnInit {
       }
       byTarget[rule.action.targetField].push(rule);
     });
-    Object.keys(byTarget).forEach((target) => {
-      groups.push({ targetField: target, rules: byTarget[target] });
-    });
+    Object.keys(byTarget)
+      .sort((a, b) => {
+        const orderA = fieldOrder.has(a)
+          ? fieldOrder.get(a)!
+          : Number.MAX_SAFE_INTEGER;
+        const orderB = fieldOrder.has(b)
+          ? fieldOrder.get(b)!
+          : Number.MAX_SAFE_INTEGER;
+        if (orderA === orderB) {
+          return a.localeCompare(b);
+        }
+        return orderA - orderB;
+      })
+      .forEach((target) => {
+        groups.push({ targetField: target, rules: byTarget[target] });
+      });
     return groups;
   });
   collapsedMap = signal<Record<string, boolean>>({});

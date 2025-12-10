@@ -76,16 +76,15 @@
         </p>
         } @else if (file.isBlurry) {
         <p class="text-xs text-amber-600 mt-1">Flagged as blurry</p>
-        } @else if (file.documentQuality) {
-        @if (file.documentQuality.isLikelyTampered) {
+        } @else if (file.documentQuality) { @if
+        (file.documentQuality.isLikelyTampered) {
         <p class="text-xs text-amber-600 mt-1">Document appears tampered</p>
-        }
-        @if (file.documentQuality.unreadableRegions && file.documentQuality.unreadableRegions.length > 0) {
+        } @if (file.documentQuality.unreadableRegions &&
+        file.documentQuality.unreadableRegions.length > 0) {
         <p class="text-xs text-amber-600 mt-1">
           {{ file.documentQuality.unreadableRegions.length }} redacted region(s)
         </p>
-        }
-        }
+        } }
       </div>
       <button
         type="button"

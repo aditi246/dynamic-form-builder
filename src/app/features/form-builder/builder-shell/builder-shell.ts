@@ -6,6 +6,8 @@ import {
   effect,
   signal,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { OverlayModule } from '@angular/cdk/overlay';
 import { FormsStep } from '../forms-step/forms-step';
 import { FieldsStep } from '../fields-step/fields-step';
 import { RulesStep } from '../rules-step/rules-step';
@@ -16,12 +18,22 @@ import {
 } from '../../../shared/services/forms-management.service';
 import { BuilderTourOverlay } from '../tutorial/builder-tour-overlay';
 import { BuilderTourService } from '../tutorial/builder-tour.service';
+import { StorageService } from '../../../shared/services/storage.service';
 
 @Component({
   selector: 'app-builder-shell',
   standalone: true,
-  imports: [FormsStep, FieldsStep, RulesStep, PreviewStep, BuilderTourOverlay],
+  imports: [
+    RouterLink,
+    OverlayModule,
+    FormsStep,
+    FieldsStep,
+    RulesStep,
+    PreviewStep,
+    BuilderTourOverlay,
+  ],
   templateUrl: './builder-shell.html',
+  styleUrl: './builder-shell.scss',
 })
 export class BuilderShell implements AfterViewInit {
   @ViewChild('previewCmp') previewCmp?: PreviewStep;
@@ -35,11 +47,60 @@ export class BuilderShell implements AfterViewInit {
   hasActiveForm = computed(
     () => this.formEngaged() && !!this.formsService.currentFormId(),
   );
+  themes = [
+    {
+      id: 'sky',
+      name: 'Sky',
+      accent: 'linear-gradient(135deg, #137fec, #22d3ee)',
+    },
+    {
+      id: 'orchid',
+      name: 'Orchid',
+      accent: 'linear-gradient(135deg, #a855f7, #ec4899)',
+    },
+    {
+      id: 'sunset',
+      name: 'Sunset',
+      accent: 'linear-gradient(135deg, #f97316, #f43f5e)',
+    },
+    {
+      id: 'forest',
+      name: 'Forest',
+      accent: 'linear-gradient(135deg, #16a34a, #0ea5e9)',
+    },
+    {
+      id: 'slate',
+      name: 'Slate',
+      accent: 'linear-gradient(135deg, #1f2937, #4b5563)',
+    },
+    {
+      id: 'ember',
+      name: 'Ember',
+      accent: 'linear-gradient(135deg, #ef4444, #312e81)',
+    },
+  ];
+  currentTheme = signal<string>('sky');
+  themeLabel = computed(
+    () => this.themes.find((t) => t.id === this.currentTheme())?.name || 'Sky',
+  );
+  private readonly THEME_STORAGE_KEY = 'builder-shell-theme';
+
+  showThemeMenu = signal<boolean>(false);
 
   constructor(
     public formsService: FormsManagementService,
     public tour: BuilderTourService,
+    private storage: StorageService,
   ) {
+    const savedTheme = this.storage.getItem<string>(this.THEME_STORAGE_KEY);
+    if (savedTheme && this.themes.some((t) => t.id === savedTheme)) {
+      this.currentTheme.set(savedTheme);
+    }
+
+    effect(() => {
+      this.storage.setItem(this.THEME_STORAGE_KEY, this.currentTheme());
+    });
+
     effect(() => {
       this.tour.setShellStep(this.currentStep());
     });
@@ -216,5 +277,23 @@ export class BuilderShell implements AfterViewInit {
       }
     }
     this.tour.start(force);
+  }
+
+  setTheme(theme: string) {
+    this.currentTheme.set(theme);
+  }
+
+  cycleTheme() {
+    const idx = this.themes.findIndex((t) => t.id === this.currentTheme());
+    const next = this.themes[(idx + 1) % this.themes.length];
+    this.currentTheme.set(next.id);
+  }
+
+  toggleThemeMenu() {
+    this.showThemeMenu.update((open) => !open);
+  }
+
+  closeThemeMenu() {
+    this.showThemeMenu.set(false);
   }
 }

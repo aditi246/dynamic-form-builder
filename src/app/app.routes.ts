@@ -8,4 +8,15 @@ export const routes: Routes = [
         (m) => m.BuilderShell,
       ),
   },
+  {
+    path: 'team',
+    loadComponent: () =>
+      import('./features/team/meet-developers').then(
+        (m) => m.MeetDevelopersComponent,
+      ),
+  },
+  {
+    path: '**',
+    redirectTo: '',
+  },
 ];

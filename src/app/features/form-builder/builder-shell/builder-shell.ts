@@ -18,6 +18,7 @@ import {
 } from '../../../shared/services/forms-management.service';
 import { BuilderTourOverlay } from '../tutorial/builder-tour-overlay';
 import { BuilderTourService } from '../tutorial/builder-tour.service';
+import { StorageService } from '../../../shared/services/storage.service';
 
 @Component({
   selector: 'app-builder-shell',
@@ -82,13 +83,24 @@ export class BuilderShell implements AfterViewInit {
   themeLabel = computed(
     () => this.themes.find((t) => t.id === this.currentTheme())?.name || 'Sky',
   );
+  private readonly THEME_STORAGE_KEY = 'builder-shell-theme';
 
   showThemeMenu = signal<boolean>(false);
 
   constructor(
     public formsService: FormsManagementService,
     public tour: BuilderTourService,
+    private storage: StorageService,
   ) {
+    const savedTheme = this.storage.getItem<string>(this.THEME_STORAGE_KEY);
+    if (savedTheme && this.themes.some((t) => t.id === savedTheme)) {
+      this.currentTheme.set(savedTheme);
+    }
+
+    effect(() => {
+      this.storage.setItem(this.THEME_STORAGE_KEY, this.currentTheme());
+    });
+
     effect(() => {
       this.tour.setShellStep(this.currentStep());
     });

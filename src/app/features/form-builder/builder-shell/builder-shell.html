@@ -166,39 +166,41 @@
     }
   </header>
 
-  <main class="p-6 pb-28 flex-1 overflow-auto">
-    @if (currentStep() === 'forms') {
-    <app-forms-step
-      #formsCmp
-      (nextStep)="onNextStep()"
-      (backStep)="onBackStep()"
-      (formSelected)="onFormSelected($event)"
-      (startUserFill)="onUserFillStart($event)"
-      (editSubmission)="onSubmissionEdit($event)"
-    ></app-forms-step>
-    } @else if (currentStep() === 'fields') {
-    <app-fields-step
-      [formName]="formsService.getCurrentFormName()"
-      (nextStep)="onNextStep()"
-      (backStep)="onBackStep()"
-    ></app-fields-step>
-    } @else if (currentStep() === 'rules') {
-    <app-rules-step
-      (nextStep)="onNextStep()"
-      (backStep)="onBackStep()"
-    ></app-rules-step>
-    } @else if (currentStep() === 'preview') {
-    <app-preview-step
-      #previewCmp
-      [initialValues]="initialValues()"
-      (nextStep)="onPreviewSubmit($event)"
-      (backStep)="onBackStep()"
-    ></app-preview-step>
-    }
+  <main class="flex-1 min-h-0">
+    <div class="h-full overflow-auto p-6">
+      @if (currentStep() === 'forms') {
+      <app-forms-step
+        #formsCmp
+        (nextStep)="onNextStep()"
+        (backStep)="onBackStep()"
+        (formSelected)="onFormSelected($event)"
+        (startUserFill)="onUserFillStart($event)"
+        (editSubmission)="onSubmissionEdit($event)"
+      ></app-forms-step>
+      } @else if (currentStep() === 'fields') {
+      <app-fields-step
+        [formName]="formsService.getCurrentFormName()"
+        (nextStep)="onNextStep()"
+        (backStep)="onBackStep()"
+      ></app-fields-step>
+      } @else if (currentStep() === 'rules') {
+      <app-rules-step
+        (nextStep)="onNextStep()"
+        (backStep)="onBackStep()"
+      ></app-rules-step>
+      } @else if (currentStep() === 'preview') {
+      <app-preview-step
+        #previewCmp
+        [initialValues]="initialValues()"
+        (nextStep)="onPreviewSubmit($event)"
+        (backStep)="onBackStep()"
+      ></app-preview-step>
+      }
+    </div>
   </main>
 
   <footer
-    class="bg-white border-t border-border px-6 py-4 flex items-center justify-between gap-4 fixed bottom-0 left-0 right-0 z-20"
+    class="bg-white border-t border-border px-6 py-4 flex items-center justify-between gap-4 sticky bottom-0 left-0 right-0 z-20"
   >
     <div class="flex items-center gap-3">
       @if (currentStep() !== 'forms') {
